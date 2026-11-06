@@ -5,13 +5,15 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>飞特 HD-1910 方案 · hello-microduck</title>
 <meta name="description" content="手把手做一只 MicroDuck：材料、接线、写系统、标定，一步一步来。非官方教程。">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Noto+Sans+SC:wght@400;500;700;900&display=swap">
 <link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/guide.js" defer></script>
 </head>
 <body>
 <header class="top">
-  <a class="brand" href="../">hello-microduck</a>
+  <div class="site-identity">
+    <a class="brand" href="../">hello-microduck</a>
+    <a class="creator-link" href="https://www.xiaohongshu.com/user/profile/56587f61b8ce1a583ad11678" target="_blank" rel="noopener" aria-label="我的小红书主页（新窗口打开）">我的小红书 ↗</a>
+  </div>
   <nav class="topnav" aria-label="网站导航">
     <a href="../feetech/">飞特方案</a>
     <a href="../xl330/">XL330 方案</a>
@@ -19,25 +21,425 @@
     <a href="https://github.com/heranhe/hello-microduck" target="_blank" rel="noopener">GitHub ↗</a>
   </nav>
 </header>
-<main class="content wide"><p class="eyebrow">飞特 HD-1910 方案</p>
+<div class="with-steps guide"><nav class="steps" aria-label="飞特方案的步骤"><ol><li class="now"><a href="#materials" aria-current="step"><b>1</b><span>准备材料和打印</span></a></li><li class=""><a href="#servo-id"><b>2</b><span>给舵机设 ID</span></a></li><li class=""><a href="#boards"><b>3</b><span>主板、HAT 和接线</span></a></li><li class=""><a href="#system"><b>4</b><span>写入系统、通电</span></a></li><li class=""><a href="#calibrate"><b>5</b><span>用调试工具标定</span></a></li></ol></nav><main class="content"><section id="overview"><p class="eyebrow">飞特 HD-1910 方案</p>
 <h1>用飞特舵机做一只 MicroDuck</h1>
-<p class="lead">一共五步。按顺序做，每一步做完再进下一步。</p>
+<p class="lead">五步都在这一页，向下滑动就能连续看完。也可以点目录，直接跳到要做的步骤。</p>
 
 <ol class="road">
-  <li><div><b><a href="materials.html">准备材料和打印</a></b><span>采购清单、打印外壳。</span></div></li>
-  <li><div><b><a href="servo-id.html">给舵机设 ID</a></b><span>15 颗舵机各设一个编号，顺便转到中位。</span></div></li>
-  <li><div><b><a href="boards.html">主板、HAT 和接线</a></b><span>摄像头排线、焊 ToF、舵机线序，最后装舵机。</span></div></li>
-  <li><div><b><a href="system.html">写入系统、通电</a></b><span>一键写 TF 卡、插卡方向、哪个 C 口供电。</span></div></li>
-  <li><div><b><a href="calibrate.html">用调试工具标定</a></b><span>系统写好以后，用调试工具一步一步标定。</span></div></li>
+  <li><div><b><a href="#materials">准备材料和打印</a></b><span>采购清单、打印外壳。</span></div></li>
+  <li><div><b><a href="#servo-id">给舵机设 ID</a></b><span>15 颗舵机各设一个编号，顺便转到中位。</span></div></li>
+  <li><div><b><a href="#boards">主板、HAT 和接线</a></b><span>摄像头排线、焊 ToF、舵机线序，最后装舵机。</span></div></li>
+  <li><div><b><a href="#system">写入系统、通电</a></b><span>一键写 TF 卡、插卡方向、哪个 C 口供电。</span></div></li>
+  <li><div><b><a href="#calibrate">用调试工具标定</a></b><span>系统写好以后，用调试工具一步一步标定。</span></div></li>
 </ol>
 
 <div class="note warn">
   <b>先读这一条</b>
-  <p>这个方案换了舵机，接线和官方原版不一样。特别是舵机线和 HAT 板的线序正好相反，第 3 步会讲清楚。不确定的地方，先停下来对照照片。</p>
+  <p>这个方案换了舵机，先确认 HAT 的版本。原版 HAT 和飞特舵机的线序不同；推荐的飞特兼容版可直接兼容飞特舵机线，第 3 步会分别说明。不确定的地方，先停下来对照板上标注和接线图。</p>
 </div>
 
-<p><a class="btn main" href="materials.html">开始第 1 步 →</a></p>
-</main>
+<p><a class="btn main" href="#materials">开始第 1 步 →</a></p>
+</section><section class="guide-section" id="materials" aria-label="第 1 步：准备材料和打印"><p class="eyebrow">第 1 步，共 5 步</p><h2>准备材料和打印</h2>
+<p class="lead">先把零件买齐，再打印外壳。零件到手前可以先开始打印。</p>
+
+<h3>采购清单</h3>
+<p>按核心硬件、传感器、电路板、机械结构和调试工具分成五类。已购数量供参考，实际装机需求单独列出；价格以你下单时为准。</p>
+
+<h4>一、核心硬件</h4>
+<div class="tw"><table>
+  <thead><tr><th>配件名称</th><th>已购数量</th><th>实际需求</th><th>单价</th><th>采购金额</th></tr></thead>
+  <tbody>
+    <tr><td>飞特 HD-1910-C001 舵机</td><td>17 颗</td><td>15 颗</td><td class="num">¥83.00</td><td class="num">¥1,411.00</td></tr>
+    <tr><td>Radxa ZERO 3W 2GB 主控</td><td>1 块</td><td>1 块</td><td class="num">¥309.00</td><td class="num">¥309.00</td></tr>
+    <tr><td>MicroDuck Robot HAT（<a href="#recommended-boards">推荐飞特兼容版</a>）</td><td>1 块</td><td>1 块</td><td class="num">¥120.00</td><td class="num">¥120.00</td></tr>
+    <tr><td>32GB TF 卡</td><td>1 张</td><td>1 张</td><td class="num">¥73.00</td><td class="num">¥73.00</td></tr>
+  </tbody>
+  <tfoot><tr><td colspan="4">小计</td><td class="num">¥1,913.00</td></tr></tfoot>
+</table></div>
+<p>舵机中有 2 颗备用。按装机所需的 15 颗计算，<b>核心硬件单机成本为 ¥1,747.00</b>。</p>
+
+<h4>二、传感器及音频</h4>
+<div class="tw"><table>
+  <thead><tr><th>配件名称</th><th>已购数量</th><th>实际需求</th><th>采购金额</th></tr></thead>
+  <tbody>
+    <tr><td>VL53L5X V2 ToF 测距模块</td><td>1 块</td><td>1 块</td><td class="num">¥49.50</td></tr>
+    <tr><td>3525 腔体扬声器（4Ω 3W）</td><td>1 个</td><td>1 个</td><td class="num">¥3.08</td></tr>
+    <tr><td>摄像头模块（Radxa Camera 8M 219，带排线）</td><td>1 个</td><td>1 个</td><td>待核实</td></tr>
+    <tr><td>IMU 模块</td><td>1 个</td><td>1 个</td><td>计入 PCB 套件</td></tr>
+  </tbody>
+  <tfoot><tr><td colspan="3">已知小计</td><td class="num">¥52.58</td></tr></tfoot>
+</table></div>
+<p>摄像头已购买，价格待核实。IMU 的费用包含在下面的 PCB 套件中，不重复计算。</p>
+
+<h4>三、电路板及连接线</h4>
+<div class="tw"><table>
+  <thead><tr><th>配件名称</th><th>数量参考</th><th>实际需求</th><th>参考金额</th></tr></thead>
+  <tbody>
+    <tr><td>IMU + HUB + 电池接线 PCB 套件（<a href="#recommended-boards">推荐店铺</a>）</td><td>1 套</td><td>1 套</td><td class="num">¥89.00</td></tr>
+    <tr><td>5264-3P 转 AMP2.0 反向调试线</td><td>1 根</td><td>1 根</td><td class="num">≈¥3.00</td></tr>
+    <tr><td>SH1.0 4P 转杜邦母头线（20cm）</td><td>已购 5 根</td><td>按接线需求</td><td class="num">¥4.80</td></tr>
+    <tr><td><a href="#servo-cables">AMP2.0-3P 舵机互连线（建议另购）</a></td><td>已购 16 根</td><td>按长度与布线确定</td><td class="num">¥33.80</td></tr>
+  </tbody>
+  <tfoot><tr><td colspan="3">参考小计</td><td class="num">≈¥130.60</td></tr></tfoot>
+</table></div>
+<p>反向调试线只需 1 根，按原先 4 根 ¥12 折算约 ¥3。PCB 套件含电池背板 IMU、dxl_hub 和 banana_pcb。</p>
+
+<h4>四、机械结构及紧固件</h4>
+<div class="tw"><table>
+  <thead><tr><th>配件名称</th><th>数量参考</th><th>实际需求</th><th>参考金额</th></tr></thead>
+  <tbody>
+    <tr><td>6700 轴承</td><td>已购 3 个</td><td>待核实</td><td>—</td></tr>
+    <tr><td>ET2216 轴承</td><td>已购 11 个</td><td>待核实</td><td>—</td></tr>
+    <tr><td>轴承合计</td><td>已购 14 个</td><td>按 CAD BOM 核对</td><td class="num">¥41.00</td></tr>
+    <tr><td><a href="#screws">M2.5×6 十字圆头平尾自攻螺丝</a></td><td>1 包（100 个）</td><td>1 包足够</td><td>待补充</td></tr>
+    <tr><td>3D 打印结构件</td><td>1 套</td><td>1 套</td><td>未统计</td></tr>
+  </tbody>
+  <tfoot><tr><td colspan="3">已知小计</td><td class="num">¥41.00</td></tr></tfoot>
+</table></div>
+<p>轴承数量是采购记录，装机数量还需按适配 HD-1910 版本的 CAD BOM 核对。螺丝按下方规格买 100 个即可，价格待补充。</p>
+
+<h4>五、必要调试工具</h4>
+<div class="tw"><table>
+  <thead><tr><th>工具名称</th><th>已购数量</th><th>用途</th><th>采购金额</th></tr></thead>
+  <tbody>
+    <tr><td>灵影 TTL Adapter(A) 调试板</td><td>1 块</td><td>舵机 ID 编号、参数配置、调试</td><td class="num">¥31.00</td></tr>
+  </tbody>
+  <tfoot><tr><td colspan="3">小计</td><td class="num">¥31.00</td></tr></tfoot>
+</table></div>
+
+<div class="note">
+  <b>已列项目参考小计：约 ¥2,168.18</b>
+  <p>按 17 颗舵机（含 2 颗备用）、1 根反向调试线，以及另购 16 根舵机互连线的订单实付 ¥33.80 计算，轴承只计一次总价。尚未计入摄像头、螺丝、打印耗材、电池等未核实或未列价格，因此不是完整装机总价。</p>
+</div>
+
+<ul class="how">
+  <li><b>舵机买 17 颗：</b>装机用 15 颗，另外 2 颗备用。</li>
+  <li><b>调试板和反向线：</b>第 2 步给舵机设 ID 时用，一次只接一颗舵机，1 根反向调试线就够。</li>
+  <li><b>SH1.0 转杜邦线：</b>第 3 步接 ToF 用。</li>
+  <li><b>螺丝：</b>按下图选 M2.5×6 十字圆头平尾自攻螺丝，买 1 包 100 个足够。</li>
+</ul>
+
+<h3 id="recommended-boards">推荐板卡：飞特兼容版 HAT、IMU 和香蕉电源板</h3>
+<p>作者推荐从同一家店购买 <b>HAT、IMU 转接板和香蕉电源板（banana_pcb）</b>。对应商品标题为“microduck开源机器鸭 kissqy开源仓库同款HAT加IMU TO DXL套件”。</p>
+<div class="note">
+  <b>优先选择飞特兼容版本</b>
+  <p>按作者提供的使用信息，这个版本的 HAT 可直接兼容飞特舵机线，R33 电阻已优化，并且支持喇叭直插。</p>
+</div>
+<p><a class="btn main" href="https://e.tb.cn/h.jRVOJbCVQ9ESt2i?tk=dURX6YsSy3l" target="_blank" rel="noopener">查看作者推荐的淘宝商品 ↗</a></p>
+<p>下单时分别核对 HAT、IMU 转接板和香蕉电源板选项；商品选项是否包含 HUB、连接线或其他配件，以店铺说明为准。清单中的 HAT ¥120 和 PCB 套件 ¥89 是原采购记录，推荐商品的现价以所选配置为准。</p>
+
+<h3 id="servo-cables">建议另购舵机互连线</h3>
+<p><b>设 ID 的反向调试线只需 1 根；装机用的舵机互连线需要按总线布线另行准备。</b>下面这款是作者购买的“永成电子”AMP2.0 线材：100 mm、特软硅胶 24#，订单选项为“双头反向”。</p>
+<figure>
+  <a href="../assets/img/amp2-servo-cables.jpg" target="_blank" rel="noopener"><img src="../assets/img/amp2-servo-cables.jpg" width="1206" height="445" loading="lazy" decoding="async" alt="永成电子 AMP2.0 间距 2.0 179228 连接线购买参考，100 毫米、特软硅胶 24 号、双头反向，购买 16 根，订单实付款 33.8 元含运费 8 元"></a>
+  <figcaption><b>线材购买参考</b>作者采购了 16 根，截图单价 ¥1.61，订单实付 ¥33.80（含运费 ¥8）。实际需要的长度、数量按走线确定。</figcaption>
+</figure>
+<div class="note warn">
+  <b>线材不稳，也可能让鸭子走路卡顿、摔倒</b>
+  <p>作者的装机经验是：舵机随附线材可能出现丢包，导致动作卡顿，严重时摔倒，因此建议另购连接可靠的互连线。出现卡顿时也要同时排查供电、接触和总线状态，不能只凭现象认定是线材问题。</p>
+</div>
+<p>店铺对“同向／反向”的叫法可能不同，购买时按两端针脚对应关系和所用板卡核对。<b>推荐的飞特兼容 HAT 与原版 HAT 的接线要求不同</b>，不要把原版板子的反向接法直接套到兼容版。</p>
+
+<h3 id="screws">连接螺丝的规格</h3>
+<p>选择<b>碳钢发黑、十字圆头、平尾自攻，M2.5×6</b>。螺纹直径为 2.5 mm，螺杆长 6 mm（不含头部）；图中头部直径约 3.9 mm、厚约 1.4 mm。</p>
+<figure>
+  <a href="../assets/img/screw-m2-5x6.jpg" target="_blank" rel="noopener"><img src="../assets/img/screw-m2-5x6.jpg" width="800" height="800" loading="lazy" decoding="async" alt="M2.5×6 碳钢发黑十字圆头平尾自攻螺丝规格图，螺杆长度 6 毫米不含头部，头部直径约 3.9 毫米、厚约 1.4 毫米"></a>
+  <figcaption><b>螺丝选型</b>M2.5×6，1 包 100 个即可。点击图片可查看原图。</figcaption>
+</figure>
+
+<div class="note warn">
+  <b>清单里没有的，也要准备</b>
+  <p>电池、打印耗材、TF 读卡器、电烙铁和焊锡（焊 ToF 要用）、一台电脑。</p>
+</div>
+
+<h3>打印外壳</h3>
+<p>MicroDuck 的外壳和结构件都是 3D 打印的。飞特 HD-1910 和官方 XL330 的外形尺寸不一样，要打印适配 HD-1910 的版本。</p>
+<ul class="how">
+  <li>名字里带“软质”的零件（比如嘴部软垫）用 TPU 打印，其余用普通硬质耗材。</li>
+  <li>颜色随你喜欢，不影响功能。</li>
+</ul>
+
+<div class="note todo">
+  <b>打印文件：作者补充中</b>
+  <p>HD-1910 版打印文件的下载地址和打印参数还在整理，补上后会更新这里。</p>
+</div>
+<div class="pager"><a class="btn" href="#overview">← 方案总览</a><a class="btn main" href="#servo-id">继续：给舵机设 ID ↓</a></div></section><section class="guide-section" id="servo-id" aria-label="第 2 步：给舵机设 ID"><p class="eyebrow">第 2 步，共 5 步</p><h2>给舵机设 ID</h2>
+<p class="lead">15 颗舵机接在同一根线上，主板靠编号（ID）区分它们。新舵机出厂都是同一个编号，所以装之前要一颗一颗改好。</p>
+
+<div class="need">
+  <h3>这一步要用到</h3>
+  <ul>
+    <li>15 颗 HD-1910 舵机（备用的 2 颗也可以一起设）</li>
+    <li>灵影 TTL Adapter(A) 调试板</li>
+    <li>5264-3P 转 AMP2.0 反向调试线 1 根</li>
+    <li>一台 Windows 电脑，装好飞特的舵机调试软件</li>
+    <li>贴纸和笔，用来给舵机写编号</li>
+  </ul>
+</div>
+
+<h3 id="servo-map">每颗舵机的编号</h3>
+<p><b>下面的编号表和接线总图统一按后视方向排布：鸭子背对你，你和鸭子看向同一方向。</b>左边是鸭子的左腿（20–24），右边是鸭子的右腿（10–14）。</p>
+<p>文中的“左／右”始终指<b>鸭子自身的左／右</b>。如果你面对鸭子的嘴看，它的左腿会在你的右手边，右腿会在你的左手边。</p>
+<div class="ids">
+  <section class="head"><h4>头部</h4><ul>
+    <li><b>30</b>脖子前后</li><li><b>31</b>头部点头</li><li><b>32</b>头部左右转</li><li><b>33</b>头部侧歪</li><li><b>34</b>嘴</li>
+  </ul></section>
+  <section><h4>左腿</h4><ul>
+    <li><b>20</b>左髋转向</li><li><b>21</b>左髋侧摆</li><li><b>22</b>左髋前后</li><li><b>23</b>左膝</li><li><b>24</b>左踝</li>
+  </ul></section>
+  <section><h4>右腿</h4><ul>
+    <li><b>10</b>右髋转向</li><li><b>11</b>右髋侧摆</li><li><b>12</b>右髋前后</li><li><b>13</b>右膝</li><li><b>14</b>右踝</li>
+  </ul></section>
+</div>
+<p>这套编号和官方 MicroDuck 一致，后面的系统和调试工具都按它来认舵机。</p>
+
+<h3>怎么设</h3>
+<ol class="how">
+  <li><b>一次只接一颗舵机。</b>两颗同时接，编号一样，软件分不清。</li>
+  <li>调试板接电脑 USB，舵机用反向调试线接到调试板上。调试板怎么给舵机供电，按调试板自带的说明接。</li>
+  <li>打开飞特调试软件，波特率选 1Mbps，搜索舵机。新舵机出厂编号是 1。</li>
+  <li>把编号改成上表里的数字，写入保存。</li>
+  <li>在软件里让舵机转到 <code>2048</code>，也就是正中间。第 3 步装舵盘时要它在中间。</li>
+  <li>马上在舵机上贴纸写编号，然后拔下来，换下一颗。</li>
+</ol>
+
+<div class="note">
+  <b>改完怎么确认</b>
+  <p>重新上电再搜一次，能用新编号搜到，就说明改好了。</p>
+</div>
+
+<h4>这款舵机的几个数字</h4>
+<p>来自飞特 HD-1910-C001 的产品规格书，设 ID 和调试时会用到。</p>
+<div class="tw"><table>
+  <tbody>
+    <tr><th>编号范围</th><td>0–253，出厂是 1</td></tr>
+    <tr><th>通信速度</th><td>38400bps–1Mbps，出厂是 1Mbps</td></tr>
+    <tr><th>转动范围</th><td>360°，读数 0–4095</td></tr>
+    <tr><th>中位</th><td>2048</td></tr>
+    <tr><th>每一格</th><td>约 0.088°</td></tr>
+  </tbody>
+</table></div>
+
+<div class="note warn">
+  <b>软件界面以你手上的版本为准</b>
+  <p>不同版本的飞特调试软件按钮位置可能不一样，找“搜索”“ID”“写入”这几个功能就行。</p>
+</div>
+<div class="pager"><a class="btn" href="#materials">↑ 上一步：准备材料和打印</a><a class="btn main" href="#boards">继续：主板、HAT 和接线 ↓</a></div></section><section class="guide-section" id="boards" aria-label="第 3 步：主板、HAT 和接线"><p class="eyebrow">第 3 步，共 5 步</p><h2>主板、HAT 和接线</h2>
+<p class="lead">这一步接摄像头、焊 ToF、看清舵机线序，最后把舵机装进身体。按小节顺序做。</p>
+
+<div class="need">
+  <h3>这一步要用到</h3>
+  <ul>
+    <li>Radxa ZERO 3W 主控和 HAT（推荐飞特兼容版本）</li>
+    <li>摄像头和排线</li>
+    <li>VL53L5X ToF 模块和 SH1.0 4P 转杜邦线</li>
+    <li>电烙铁、焊锡</li>
+    <li>设好 ID 的 15 颗舵机，打印好的外壳</li>
+  </ul>
+</div>
+
+<div class="note">
+  <b>先确认 HAT 的版本</b>
+  <p><a href="#recommended-boards">作者推荐的飞特兼容 HAT</a>可直接兼容飞特舵机线，R33 电阻已优化，喇叭可直插；IMU 转接板和香蕉电源板也推荐同一家店。下面保留的原版 HAT 接口图用于说明差异，接线时以手中板卡的丝印、针脚定义和店铺接线说明为准。</p>
+</div>
+
+<h3>1. 摄像头接到主板</h3>
+<ol class="how">
+  <li>轻轻掀起主板排线座上的卡扣。</li>
+  <li>把排线插到底，方向照图 1。</li>
+  <li>把卡扣压回去，轻拉一下排线，不松就对了。</li>
+</ol>
+<figure>
+  <a href="../assets/img/camera-to-zero3w.webp" target="_blank" rel="noopener"><img src="../assets/img/camera-to-zero3w.webp" width="1050" height="1400" loading="lazy" alt="左边是 Radxa Camera 8M 219 摄像头板，右边是 Radxa ZERO 3W 主板，两者用金色排线连接"></a>
+  <figcaption><b>图 1</b>摄像头（左）用排线接到 ZERO 3W 主板（右）。</figcaption>
+</figure>
+
+<h3>2. 焊 ToF</h3>
+<p>ToF 是测距的“眼睛”，装在头上。用 SH1.0 4P 转杜邦线：杜邦那头的线焊到 ToF 模块上，SH1.0 那头插到 HAT 板上。</p>
+<div class="figs">
+  <figure>
+    <a href="../assets/img/tof-wires-back.webp" target="_blank" rel="noopener"><img src="../assets/img/tof-wires-back.webp" width="1050" height="1400" loading="lazy" alt="ToF 模块背面，红、黑、黄、绿四根线从上到下焊在右侧的孔上"></a>
+    <figcaption><b>图 2</b>背面：四根线焊在上面四个孔。</figcaption>
+  </figure>
+  <figure>
+    <a href="../assets/img/tof-front.webp" target="_blank" rel="noopener"><img src="../assets/img/tof-front.webp" width="1050" height="1400" loading="lazy" alt="ToF 模块正面，黑色的传感器窗口在中间"></a>
+    <figcaption><b>图 3</b>正面：中间黑色的是传感器窗口，别弄脏。</figcaption>
+  </figure>
+</div>
+
+<p>六个小孔从上到下这样接（方向和图 4 一样）：</p>
+<div class="tw"><table>
+  <thead><tr><th>线色</th><th>ToF 孔位</th><th>接到 HAT 的 J5</th></tr></thead>
+  <tbody>
+    <tr><td><span class="wire"><i class="c-red"></i>红</span></td><td>VIN</td><td>2 号脚（3.3V）</td></tr>
+    <tr><td><span class="wire"><i class="c-black"></i>黑</span></td><td>GND</td><td>1 号脚（GND）</td></tr>
+    <tr><td><span class="wire"><i class="c-yellow"></i>黄</span></td><td>SCL</td><td>4 号脚（SCL）</td></tr>
+    <tr><td><span class="wire"><i class="c-green"></i>绿</span></td><td>SDA</td><td>3 号脚（SDA）</td></tr>
+    <tr><td><span class="wire"><i class="c-none"></i>不接</span></td><td>INT</td><td>—</td></tr>
+    <tr><td><span class="wire"><i class="c-none"></i>不接</span></td><td>LPn</td><td>—</td></tr>
+  </tbody>
+</table></div>
+<figure>
+  <a href="../assets/img/tof-pin-map.webp" target="_blank" rel="noopener"><img src="../assets/img/tof-pin-map.webp" width="1100" height="940" loading="lazy" alt="ToF 模块六个孔的标注图：VIN 红、GND 黑、SCL 黄、SDA 绿，INT 和 LPn 不接"></a>
+  <figcaption><b>图 4</b>ToF 六个孔的定义。只有六个小孔是电气连接，两个大孔是安装孔。</figcaption>
+</figure>
+<div class="note warn">
+  <b>焊之前看一眼正面丝印</b>
+  <p>LPn 不接线时，靠模块板上自带的上拉电阻。不同批次的模块孔位顺序可能不同，焊之前按正面印的字核对一遍。</p>
+</div>
+
+<h3>3. ToF 插到 HAT 的 J5</h3>
+<p>使用下图的原版 HAT 时，SH1.0 那头插到 <b>J5</b> 接口，1 号脚在靠近 J6 的一侧。使用推荐的兼容板时，先核对板上的 ToF 接口和针脚标注。</p>
+<div class="tw"><table>
+  <thead><tr><th>J5 脚位</th><th>信号</th><th>线色</th></tr></thead>
+  <tbody>
+    <tr><td>1（靠 J6 一侧）</td><td>GND</td><td><span class="wire"><i class="c-black"></i>黑</span></td></tr>
+    <tr><td>2</td><td>3.3V</td><td><span class="wire"><i class="c-red"></i>红</span></td></tr>
+    <tr><td>3</td><td>SDA</td><td><span class="wire"><i class="c-green"></i>绿</span></td></tr>
+    <tr><td>4</td><td>SCL</td><td><span class="wire"><i class="c-yellow"></i>黄</span></td></tr>
+  </tbody>
+</table></div>
+<figure>
+  <a href="../assets/img/hat-j5-pins.webp" target="_blank" rel="noopener"><img src="../assets/img/hat-j5-pins.webp" width="1160" height="820" loading="lazy" alt="HAT 板 J5 接口特写，标注 1 GND 黑、2 3.3V 红、3 SDA 绿、4 SCL 黄"></a>
+  <figcaption><b>图 5</b>HAT 板上的 J5，1 号脚在 J6 一侧（图中左边）。</figcaption>
+</figure>
+<div class="note">
+  <b>插好后会在哪里看到它</b>
+  <p>系统写好后，调试工具的“传感器”页会显示 ToF 的距离。用手挡在嘴前面，距离变近就说明接对了。</p>
+</div>
+
+<h3>4. 看清舵机线序</h3>
+<p><b>先分清原版 HAT 和飞特兼容 HAT。</b>推荐的飞特兼容版可直接兼容飞特舵机线；下图和针脚表说明的是原版 HAT，它与飞特舵机的 1、3 号脚定义相反。</p>
+<div class="figs">
+  <figure>
+    <a href="../assets/img/servo-pinout-spec.webp" target="_blank" rel="noopener"><img src="../assets/img/servo-pinout-spec.webp" width="598" height="807" loading="lazy" alt="飞特 HD-1910-C001 产品规格书截图，框出 AMP2.0-3P 接头的引脚定义"></a>
+    <figcaption><b>图 6</b>舵机线序（飞特 HD-1910-C001 规格书）。</figcaption>
+  </figure>
+  <figure>
+    <a href="../assets/img/hat-servo-pins.webp" target="_blank" rel="noopener"><img src="../assets/img/hat-servo-pins.webp" width="933" height="830" loading="lazy" alt="HAT 板 PCB 截图，框出 J13、J14 三针接口，1 号脚是 GND，2 号脚是 +BATT，3 号脚是信号"></a>
+    <figcaption><b>图 7</b>原版 HAT 的线序，框出的是 J13、J14。推荐的飞特兼容版不能直接套用这张原版针脚图。</figcaption>
+  </figure>
+</div>
+<div class="tw"><table>
+  <thead><tr><th>脚位</th><th>舵机（AMP2.0-3P）</th><th>原版 HAT（J13 / J14）</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>信号</td><td>GND</td></tr>
+    <tr><td>2</td><td>电源正（Vcc）</td><td>电源正（+BATT）</td></tr>
+    <tr><td>3</td><td>GND</td><td>信号</td></tr>
+  </tbody>
+</table></div>
+<p><b>只有上表这种原版 HAT 接飞特舵机时，才按 1 ↔ 3、2 ↔ 2 转接</b>，让信号对信号、GND 对 GND。推荐的飞特兼容板按它自身的兼容接口定义接线，不再照原版表额外反接。</p>
+<div class="note bad">
+  <b>上电前一定要确认</b>
+  <p>无论使用哪个版本，都先断电，用万用表核对线两端的信号、电源和 GND。线材的商品名称“同向／反向”不能代替实际针脚核对；信号和 GND 接错，舵机不会回应。</p>
+</div>
+<p>喇叭使用推荐兼容板的直插接口，插入前核对插头与板上标注。装机互连线建议参考<a href="#servo-cables">作者另购的软硅胶 AMP2.0 线材</a>；若出现丢包和动作卡顿，同时检查线材、接头、供电和总线状态。</p>
+
+<h3 id="single-j13">5. 按单 J13 方案接总线</h3>
+<p><b>这套接法只用 HAT 的 J13，J14 留空。</b>头颈舵机、两条腿和 IMU 接到同一条三线总线上，按下面这张总图核对。图中的 HAT 针脚是原版参考；飞特兼容板按自身接口定义接线。</p>
+<p><b>看图方向：按后视方向排布，鸭子背对你。</b>图左是鸭子自身的左腿 20–24，图右是右腿 10–14，与上面的编号表一致。这是接线示意图，不表示实际线材必须按图中的几何位置走线。</p>
+<figure class="wiring-diagram">
+  <a href="../assets/img/single-j13-wiring.png" target="_blank" rel="noopener" aria-label="打开单 J13 接线图原图"><img src="../assets/img/single-j13-wiring.png" width="1600" height="1440" loading="lazy" decoding="async" alt="MicroDuck 单 J13 接线图：HAT J13 从嘴部 34 接入，依次串联 33、32、31、30 后到 dxl_hub；HUB 分接左腿 20 至 24、右腿 10 至 14、IMU 200 和电池供电，J14 留空"></a>
+  <figcaption><b>接线总图</b>单 J13 方案；按后视方向排布（鸭子背对你），左腿 20–24 在图左，右腿 10–14 在图右。HAT 针脚为原版参考。点击可放大。</figcaption>
+</figure>
+<ol class="how">
+  <li><b>头颈：</b><code>J13 → 34 → 33 → 32 → 31 → 30 → dxl_hub</code>。从嘴部 34 接入，32 与 31 之间补上一段连接；J14 不接线。</li>
+  <li><b>两腿和 IMU：</b>HUB 分别接左腿 <code>20 → 21 → 22 → 23 → 24</code>、右腿 <code>10 → 11 → 12 → 13 → 14</code> 和两腿之间的 <code>IMU 200</code>。</li>
+  <li><b>电池：</b>2S 电池经 <code>banana_pcb</code> 引出 VIN 和 GND 两根线，接到 HUB 的电源输入焊盘。</li>
+</ol>
+<div class="tw"><table>
+  <thead><tr><th>原版 HAT J13</th><th>HUB 三线口</th></tr></thead>
+  <tbody>
+    <tr><td>1 · GND</td><td>3 · GND</td></tr>
+    <tr><td>2 · BATT_IN</td><td>2 · VIN</td></tr>
+    <tr><td>3 · DXL_DATA</td><td>1 · SERVO_BUS</td></tr>
+  </tbody>
+</table></div>
+<p class="note warn">HUB 的 3P 接口彼此并联。插头方向和脚位以板上丝印、焊盘编号及万用表导通结果为准，上电前核对 GND、VIN、DATA。</p>
+
+<h3>6. 装舵机</h3>
+<ol class="how">
+  <li>按第 2 步的编号表，把每颗舵机装到对应的关节。贴纸上的编号要和位置对上。</li>
+  <li>装舵盘之前，确认舵机还在 <code>2048</code> 中位（第 2 步已经转好）。装的时候别转动舵机轴。</li>
+  <li>舵机线按上面的单 J13 总图连接，走线别被关节夹住。</li>
+</ol>
+<div class="note">
+  <b>装偏了也能救</b>
+  <p>如果某颗舵机装的时候被转动了很多，第 5 步的调试工具会提示你，并告诉你怎么拆下来转回 2048。</p>
+</div>
+<div class="pager"><a class="btn" href="#servo-id">↑ 上一步：给舵机设 ID</a><a class="btn main" href="#system">继续：写入系统、通电 ↓</a></div></section><section class="guide-section" id="system" aria-label="第 4 步：写入系统、通电"><p class="eyebrow">第 4 步，共 5 步</p><h2>写入系统、通电</h2>
+<p class="lead">把系统写进 TF 卡，插到主板上，再从正确的 C 口接电。</p>
+
+<div class="need">
+  <h3>这一步要用到</h3>
+  <ul>
+    <li>32GB TF 卡和读卡器</li>
+    <li>一台电脑</li>
+    <li>Armbian Imager（写卡工具）</li>
+    <li>一根能传数据的 USB-C 线</li>
+  </ul>
+</div>
+
+<h3>1. 一键写入系统</h3>
+<div class="note todo">
+  <b>系统镜像：作者补充中</b>
+  <p>适配这套硬件的系统镜像和下载地址还在整理，补上后会更新这里。</p>
+</div>
+<ol class="how">
+  <li>TF 卡插到读卡器上，读卡器插到电脑上。</li>
+  <li>打开 Armbian Imager，选下载好的系统镜像文件。压缩包不用解压，直接选。</li>
+  <li>选你的 TF 卡。<b>看清楚盘符，选错会把别的盘清空。</b></li>
+  <li>点写入，等它写完并校验通过，再拔卡。</li>
+</ol>
+
+<h3>2. TF 卡插到主板</h3>
+<p>卡槽在主板背面。卡的<b>金属触点朝向电路板，印字的一面朝外</b>，推到底。</p>
+<figure>
+  <a href="../assets/img/camera-to-zero3w.webp" target="_blank" rel="noopener"><img src="../assets/img/camera-to-zero3w.webp" width="1050" height="1400" loading="lazy" decoding="async" alt="与摄像头接线处相同的主板照片，TF 卡位于右侧 ZERO 3W 主板的下端，印字朝外"></a>
+  <figcaption><b>同图 1</b>右侧主板下端露出的红灰色卡就是 TF 卡，印字的一面朝外。</figcaption>
+</figure>
+
+<h3>3. 接电：用靠近 TF 卡的那个 C 口</h3>
+<p>主板上有两个 USB-C 口。<b>靠近 TF 卡、板上印着 <code>USB_OTG</code> 和 <code>5V IN</code> 的那个</b>，才是供电和调试接口。另一个印着 <code>USB3</code> 的不用来供电。</p>
+<div class="note warn">
+  <b>线要能传数据</b>
+  <p>调试要用到数据，只能充电的线连不上电脑。</p>
+</div>
+
+<h3>4. 第一次开机</h3>
+<ul class="how">
+  <li>第一次开机比较慢，等一两分钟。</li>
+  <li>连 Wi-Fi 的方法以系统镜像的说明为准。</li>
+  <li>如果要用无线手柄，让 MicroDuck 连 5 GHz 的 Wi-Fi。2.4 GHz 可能和手柄互相干扰，出现断网。这个经验来自 <a href="https://github.com/kissqy/Microduck-kissqy/blob/main/docs/MICRODUCK-FAQ.md" target="_blank" rel="noopener">kissqy 的飞特版常见问题</a>。</li>
+</ul>
+<div class="pager"><a class="btn" href="#boards">↑ 上一步：主板、HAT 和接线</a><a class="btn main" href="#calibrate">继续：用调试工具标定 ↓</a></div></section><section class="guide-section" id="calibrate" aria-label="第 5 步：用调试工具标定"><p class="eyebrow">第 5 步，共 5 步</p><h2>用调试工具标定</h2>
+<p class="lead">系统写好、通上电以后，用调试工具一步一步标定。每个舵机装得都有一点不一样，标定就是告诉 MicroDuck 它的“正中间”在哪。</p>
+
+<p><a class="btn main" href="../tool/">打开调试工具 →</a></p>
+
+<div class="note warn">
+  <b>现在是演示版</b>
+  <p>调试工具目前用的是模拟数据，可以先熟悉流程，但还不会连接或控制真实的 MicroDuck。接实机的版本做好后会更新。</p>
+</div>
+
+<h3>工具里的七步</h3>
+<ol class="road">
+  <li><div><b>连接</b><span>填 MicroDuck 的地址，连上主控。</span></div></li>
+  <li><div><b>检查</b><span>15 颗舵机全部正常在线。哪颗有问题，会直接告诉你 ID。</span></div></li>
+  <li><div><b>摆零位</b><span>照屏幕把腿和头摆正，一次设一条腿，也可以一颗一颗设。</span></div></li>
+  <li><div><b>姿态传感器</b><span>扶正、前倾、左倾，各停一下。</span></div></li>
+  <li><div><b>摄像头 / ToF（可选）</b><span>同一页确认画面和距离变化，可以单独跳过某一项，也可以直接跳过未检查项。</span></div></li>
+  <li><div><b>试站</b><span>让它慢慢站起来，对照屏幕看姿势。局部有偏差，可以只重标一颗，或小幅微调、试用后再保存。</span></div></li>
+  <li><div><b>手柄</b><span>连上手柄，学几个常用按键。</span></div></li>
+</ol>
+
+<h3>试站后只修正有偏差的关节</h3>
+<p>在“有偏差，调整”中选择关节。微调支持 0.1° 和 0.5° 步长，先试用，效果合适再保存；修改后重新试站确认。明显摆错或拆装过，就重标那颗关节，其他关节的结果会保留。</p>
+<p>摄像头和 ToF 已放进第 5 步；跳过结果会保留在完成页，之后可以补做。</p>
+
+<h3>做完以后</h3>
+<p>想让 MicroDuck 学会自己的动作，可以用作者的训练实验室：<a href="https://github.com/heranhe/microduck-lab-cloud" target="_blank" rel="noopener">heranhe/microduck-lab-cloud ↗</a></p>
+<div class="pager"><a class="btn" href="#system">↑ 上一步：写入系统、通电</a><a class="btn main" href="../tool/">打开调试工具 →</a></div></section></main></div>
 <footer class="foot">
   <p><b>非官方教程。</b>与 MicroDuck 官方团队 Pollen Robotics 无关，没有得到官方授权或认可。MicroDuck 是 Pollen Robotics 的开源项目。</p>
   <p>照片和接线图来自作者的实际装配。<a href="https://github.com/heranhe/hello-microduck" target="_blank" rel="noopener">在 GitHub 上查看或修改这个教程 ↗</a></p>

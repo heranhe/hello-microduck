@@ -346,6 +346,30 @@ ul.plain li.go::before{content:"…";color:var(--act)}
   #dock{right:auto;background:var(--surface);border-width:1px 0}
   #idSwitch{right:12px}
 }
+
+/* 可选流程、逐关节修正：沿用现有黑底线框与粉色选中态。 */
+#rail .rb small{display:block;font-size:9px;font-weight:400;color:var(--muted)}
+#rail li.skipped i{border-style:dashed;color:var(--muted)}
+#rail{min-width:0;flex-wrap:wrap;row-gap:6px}
+#rail .rb{min-height:36px}
+.result-row{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px}
+.result-row b{margin-left:8px;font-weight:500}
+.repair-list{display:grid;gap:6px}
+.repair-list h2{margin:10px 0 2px;font-size:13px;color:var(--muted)}
+.joint-repair{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line)}
+.joint-repair span{font-size:12px}.joint-repair b{font:600 12px var(--mono);margin-right:6px}
+.joint-repair small{display:block;color:var(--good);font:11px var(--mono)}
+.trim-card{border:1px solid var(--hot);padding:16px;display:grid;gap:14px;background:var(--hot-soft)}
+.trim-value{font:40px/1.1 var(--mono);letter-spacing:-2px}.trim-value small{font-size:16px;letter-spacing:0;color:var(--muted)}
+.trim-controls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.trim-controls button{padding:10px 2px;min-height:44px;border:1px solid var(--frame);background:var(--surface);cursor:pointer;font:13px var(--mono)}
+.trim-controls button:disabled,.mini:disabled{opacity:.4;cursor:default}
+.support-check{display:flex;align-items:flex-start;gap:8px;font-size:13px}.support-check input{margin-top:4px;accent-color:var(--act)}
+.history{font-size:12px;color:var(--muted)}.history summary{cursor:pointer}.history ol{padding-left:20px;display:grid;gap:6px}
+.diagnostic-choices{display:flex;flex-wrap:wrap;gap:6px}.diagnostic-choices button{flex:1;min-width:80px}
+.diagnostic-choices .chosen{border-color:var(--hot);color:var(--hot)}
+@media(max-width:1180px){#rail{flex-basis:100%;order:3;justify-content:flex-start;overflow:auto;flex-wrap:nowrap;padding-bottom:4px}#rail .rb{flex:none}.hr{margin-left:auto}}
+
 </style>
 
 <div id="app">
@@ -353,7 +377,7 @@ ul.plain li.go::before{content:"…";color:var(--act)}
     <div class="brandbox"><div class="brandrow"><b>MicroDuck 标定</b><button class="unoff" data-a="about" title="这是非官方工具，点开看说明">非官方</button></div>
       <div class="ghrow"><span>训练个性化动作</span><a class="ghbtn" href="https://github.com/heranhe/microduck-lab-cloud" target="_blank" rel="noopener" title="打开我的训练实验室：训练、世界模拟、动作编辑和云端 GPU">GitHub ↗</a></div></div>
     <ol id="rail" aria-label="标定进度"></ol>
-    <div class="hr"><span id="link"></span><button class="link" data-a="sensors">传感器</button><button class="link" data-a="adv">高级模式</button></div>
+    <div class="hr"><span id="link"></span><button class="link" data-a="adv">高级模式</button></div>
   </header>
   <main>
     <div id="stageWrap">
@@ -487,45 +511,52 @@ const LESSONS=[
 ];
 
 // ───────── 流程状态 ─────────
-const S={sens:{from:null,t0:0,key:'',last:0,frames:0,camOk:false,camIssue:false,tofOk:false,seenFree:false,handUntil:0},flipped:{},manual:null,manualOpen:false,limitErr:null,ok:{},conn:{sub:'form',addr:'radxa@microduck.local',err:null,stage:0,up:false},step:'connect',fault:'none',scan:0,cal:presetCal(),zero:{},queue:[],i:0,phase:'a',zoneI:0,poseErr:null,poseOff:false,locked:{},redo:null,tryOnly:false,imuI:0,imuErr:null,tryI:0,drill:null,tryBad:null,fixed:[],tryK:null,standSub:'ready',standT:0,wrong:null,short:null,autoAll:false,torque:false,start:{},hover:null,pin:null,scanning:false,poseOpen:false,issueKey:'',
+const S={trim:{},history:[],tune:null,recal:null,diagnosis:'turn',sens:{skipped:{camera:false,tof:false},t0:0,key:'',last:0,frames:0,camOk:false,camIssue:false,tofOk:false,seenFree:false,handUntil:0},flipped:{},manual:null,manualOpen:false,limitErr:null,ok:{},conn:{sub:'form',addr:'radxa@microduck.local',err:null,stage:0,up:false},step:'connect',fault:'none',scan:0,cal:presetCal(),zero:{},queue:[],i:0,phase:'a',zoneI:0,poseErr:null,poseOff:false,locked:{},redo:null,tryOnly:false,imuI:0,imuErr:null,tryI:0,drill:null,tryBad:null,fixed:[],tryK:null,standSub:'ready',standT:0,wrong:null,short:null,autoAll:false,torque:false,start:{},hover:null,pin:null,scanning:false,poseOpen:false,issueKey:'',
   pad:{sub:'ready',i:0,skipped:false,hint:null,seen:{}},padMode:'stand',anim:null};
-const STEPS=['连接','检查','摆零位','姿态传感器','试站','手柄']; // 步骤条上的短名；全称见 NAME
-const stepNo=()=>({connect:0,check:1,follow:2,pose:2,imu:3,try:4,stand:4,pad:5,done:6})[S.step];
+const STEPS=['连接','检查','摆零位','姿态传感器','摄像头 / ToF','试站','手柄']; // 步骤条上的短名；全称见 NAME
+const stepNo=()=>STEP_KEYS.indexOf(S.step==='stand'?'try':S.step==='follow'?'pose':S.step);
 // ───── 步骤跳转：步骤条可以点。哪些步骤必须先做完，只改下面这张表 ─────
-const STEP_KEYS=['connect','check','pose','imu','try','pad'];
-const NAME={connect:'连接',check:'检查',pose:'摆零位',imu:'姿态传感器校准',try:'试站',pad:'手柄',done:'完成',sensors:'传感器'};
+const STEP_KEYS=['connect','check','pose','imu','sensors','try','pad'];
+const OPTIONAL=new Set(['sensors','pad']);
+const isSensor=k=>k==='sensors';
+const sensorResolved=k=>(k==='camera'?S.sens.camOk:S.sens.tofOk)||S.sens.skipped[k];
+const NAME={connect:'连接',check:'检查',pose:'摆零位',imu:'姿态传感器校准',try:'试站',pad:'手柄',done:'完成',sensors:'摄像头 / ToF',camera:'摄像头',tof:'ToF 检查'};
 const NEEDS={
   connect:[],
-  sensors:['connect'],                                 // 传感器页不属于标定流程，连上就能看，也不动舵机
+  sensors:['connect'],
   check:['connect'],                                   // 要先连上 MicroDuck 才能查舵机
   pose:['connect','check'],                            // 15 颗舵机都在线，才能读位置、设零位
   imu:['connect','check','pose'],                      // 姿态传感器校准要在零位设好后做
   try:['connect','check','pose','imu'],                // 固件要求先校准好姿态传感器（IMU）、设好零位才允许动
   pad:['connect','check','pose','imu','try'],          // 手柄的 Start 会让 MicroDuck 站起来，没标定好不能碰
 };
-const isDone=k=>({connect:()=>S.conn.up,check:()=>!!S.ok.check,pose:()=>ZONES.every(z=>S.locked[z.k]),imu:()=>!!S.ok.imu,try:()=>!!S.ok.try,pad:()=>!!S.ok.pad})[k]();
+const isDone=k=>({connect:()=>S.conn.up,check:()=>!!S.ok.check,pose:()=>ZONES.every(z=>S.locked[z.k]),imu:()=>!!S.ok.imu,try:()=>!!S.ok.try,pad:()=>!!S.ok.pad,camera:()=>S.sens.camOk,tof:()=>S.sens.tofOk,sensors:()=>S.sens.camOk&&S.sens.tofOk})[k]();
+const isSkipped=k=>k==='pad'?S.pad.skipped:k==='sensors'?sensorResolved('camera')&&sensorResolved('tof')&&(!S.sens.camOk||!S.sens.tofOk):!!S.sens.skipped[k];
+const isResolved=k=>isDone(k)||(OPTIONAL.has(k)&&isSkipped(k));
+const skipLabel=k=>k==='sensors'&&(S.sens.camOk||S.sens.tofOk)?'部分跳过':'已跳过';
 const NEEDHINT={connect:()=>'还没连上 MicroDuck',check:()=>'舵机还没检查完',pose:()=>{const m=ZONES.filter(z=>!S.locked[z.k]).map(z=>z.label);return m.length?`还差${m.join('、')}`:''},imu:()=>'姿态传感器还没校准',try:()=>'还没站起来确认'};
 const missing=k=>(NEEDS[k]||[]).filter(n=>!isDone(n));
-// 第一个没做完的步骤；手柄是可以跳过的，跳过了就算处理过
-function firstIncomplete(){
-  for(const k of STEP_KEYS){
-    if(k==='pad')return(S.ok.pad||S.pad.skipped)?'done':'pad';
-    if(!isDone(k))return k;
-  }
-}
+// 可选步骤必须明确检查或跳过；跳过不等于检查通过。
+function firstIncomplete(){return STEP_KEYS.find(k=>!isResolved(k))||'done'}
 function leaveCurrent(){
   sim.script=[];
+  if(isSensor(S.step)){S.sens.handUntil=0;S.sens.key=''}
   if(S.step==='follow'){S.autoAll=false;timeScale=1;dwellMs=900;S.cal=presetCal();S.queue=[]}
 }
 function goStep(k){
+  if(isBusy())return;
+  if(S.tune&&tuneDirty()){confirmLeave(()=>{discardTune();goStep(k)});return}
+  if(S.tune)discardTune();
+  S.recal=null;
   leaveCurrent();
   S.pin=null;
   if(k==='connect'){S.step='connect';S.conn.err=null;render();return}
   if(k==='check'){S.step='check';if(S.scan<15&&!S.scanning)scanStart();else render();return}
   if(k==='pose'){S.step='pose';const f=ZONES.findIndex(z=>!S.locked[z.k]);S.zoneI=f<0?0:f;S.poseErr=null;S.limitErr=null;S.poseOpen=false;S.torque=Object.keys(S.locked).length>0;render();return}
+  if(isSensor(k)){S.step=k;S.sens.t0=performance.now();S.sens.key='';S.sens.last=0;S.sens.seenFree=false;S.sens.handUntil=0;render();return}
   if(k==='imu'){S.step='imu';S.imuI=0;S.imuErr=null;imuReset();render();return}
   if(k==='try'){startTry();render();return}
-  if(k==='pad'){S.step='pad';if(S.pad.sub==='search'||S.pad.sub==='fail')S.pad.sub='ready';S.pad.skipped=false;render();return}
+  if(k==='pad'){S.step='pad';if(S.pad.sub==='search'||S.pad.sub==='fail')S.pad.sub='ready';render();return}
   S.step='done';render();
 }
 const advance=()=>goStep(firstIncomplete());
@@ -544,6 +575,7 @@ function setFault(v){
   if((v==='backward')!==(S.fault==='backward'))sim.dir.left_hip_pitch*=-1;
   if(v==='overrange'&&S.fault!=='overrange'){S.oldZero=sim.zero.left_hip_pitch;sim.zero.left_hip_pitch=4000}
   if(v!=='overrange'&&S.fault==='overrange')sim.zero.left_hip_pitch=S.oldZero;
+  if(v!==S.fault){if(v.startsWith('cam'))S.sens.camOk=false;if(v.startsWith('tof'))S.sens.tofOk=false}
   S.fault=v;
 }
 
@@ -605,11 +637,12 @@ function calibrate(keys){
   const probs=js.map(j=>({j,p:limitCheck(j,S.cal[j.key],bus[j.key].u)})).filter(x=>x.p);
   if(probs.length){S.limitErr=probs;S.poseOpen=true;beep(220);toast(`${probs[0].j.id} 号按这个位置设零位，固件会拒绝这份标定`,'bad');render();return}
   S.limitErr=null;S.poseErr=null;
-  js.forEach(j=>{S.zero[j.key]=bus[j.key].u});
+  js.forEach(j=>{S.zero[j.key]=bus[j.key].u;delete S.trim[j.key]});
+  invalidateMotion();
   if(keys.includes('left_ankle'))S.poseOff=S.fault==='pose';
   S.torque=true;beep(inZone(z.k).every(j=>S.zero[j.key]!=null)?880:660);
   const who=js.length===1?`${js[0].id} 号${js[0].label}`:`${js.length} 颗舵机`;
-  if(wasSet){toast(`${who}已重设零位`);render();return}
+  if(wasSet){toast(`${who}已重设零位，需要重新试站`);render();return}
   if(!inZone(z.k).every(j=>S.zero[j.key]!=null)){toast(`${who}已设为零位`);render();return}
   toast(`${z.label}的零位已设好，舵机已锁住`);
   S.locked[z.k]=true;S.poseOpen=false;
@@ -656,8 +689,105 @@ function trialBlock(){
     ${open?html`<div class="bodymap">${[['head','头部','z-head'],['right','右腿','z-r'],['left','左腿','z-l']].map(([z,lab,cls])=>html`<section class="${cls}"><h2>${lab}</h2>${inZone(z).map(j=>html`<div class="trow"><span class="svt"><b>${j.id}</b>${SHORT[j.key]}</span><button class="mini" data-a="trial" data-k="${j.key}">试动</button></div>`)}</section>`)}</div>`:''}`;
 }
 function allToml(){
-  return J.map(j=>{const c=S.cal[j.key],z=S.zero[j.key];if(!c||z==null)return`# ${j.key}: 还没完成`;const r=computeJoint(c,z);
+  return J.map(j=>{const c=S.cal[j.key],z=effectiveZero(j.key);if(!c||z==null)return`# ${j.key}: 还没完成`;const r=computeJoint(c,z);
     return`[[joints]]\nname = "${j.key}"\nid = ${j.id}\nzero_raw = ${r.zero_raw}\ndirection = ${r.direction}\ncalibrated = true\nmin_rad = ${r.min_rad.toFixed(4)}\nmax_rad = ${r.max_rad.toFixed(4)}`}).join('\n\n');
+}
+
+// ───────── 局部修正：原始零位 + 独立修正；角度反馈与目标换算共用 effectiveZero ─────────
+const signedDeg=n=>(n>0?'+':n<0?'−':'')+Math.abs(n).toFixed(1)+'°';
+const effectiveZero=(k,trim=S.trim[k]||0)=>S.zero[k]==null?null:Math.round(S.zero[k]+S.cal[k].dir*trim*D2R/K);
+const calibratedAngle=k=>S.cal[k].dir*(bus[k].u-effectiveZero(k))*K;
+const isBusy=()=>S.conn.sub==='busy'||S.scanning||(S.step==='stand'&&S.standSub==='moving')||!!S.tune?.moving;
+function invalidateMotion(){S.ok.try=false;S.ok.pad=false;S.pad.skipped=false;S.pad.sub='ready';S.anim=null;sim.script=[];clearTimeout(padTimer)}
+function addHistory(text){S.history.unshift(text);S.history=S.history.slice(0,20)}
+function historyBlock(){return S.history.length?html`<details class="history"><summary>查看本次调整记录（${S.history.length}）</summary><ol>${S.history.map(t=>html`<li>${t}</li>`)}</ol></details>`:''}
+function jointPicker(){return html`<div class="repair-list">${ZONES.map(z=>html`<section><h2>${z.label}</h2>${inZone(z.k).map(j=>html`<div class="joint-repair"><span><b>${j.id}</b>${j.label}${S.trim[j.key]?html`<small>已保存修正 ${signedDeg(S.trim[j.key])}</small>`:''}</span><button class="mini" data-a="tune" data-k="${j.key}" aria-label="微调${j.label}">微调</button><button class="mini" data-a="recal" data-k="${j.key}" aria-label="重标${j.label}">重标</button></div>`)}</section>`)}</div>`}
+function confirmLeave(next){
+  dlg.className='small';
+  mount(dlg,html`<h2>放弃未保存的微调？</h2><p>本次草稿和试用会撤销，恢复这个关节上次保存的标定。</p><div class="dlgbtns"><button class="btn" id="closeDlg">继续调整</button><button class="btn main" id="discardDlg">放弃修改</button></div>`);
+  dlg.showModal();$('closeDlg').onclick=()=>dlg.close();$('discardDlg').onclick=()=>{dlg.close();next()};
+}
+const tuneDirty=()=>!!S.tune&&(S.tune.draft!==(S.trim[S.tune.key]||0)||S.tune.tested);
+function physicalHome(k,trim=S.trim[k]||0){return sim.dir[k]*(effectiveZero(k,trim)-sim.zero[k])*K+sim.dir[k]*S.cal[k].dir*(HOME[k]||0)*D2R}
+function restoreTunePose(){if(S.tune){sim.script=[];sim.q[S.tune.key]=physicalHome(S.tune.key)}}
+function discardTune(){restoreTunePose();S.tune=null;S.pin=null}
+function openTune(k){
+  if(!BY[k]||S.zero[k]==null||isBusy())return;
+  if(S.tune?.key===k)return;
+  if(tuneDirty()){confirmLeave(()=>{discardTune();openTune(k)});return}
+  discardTune();S.recal=null;S.manual=null;sim.script=[];S.anim=null;
+  S.step='stand';S.standSub='tune';S.tune={key:k,draft:S.trim[k]||0,supported:false,tested:false,applied:null,moving:false};S.pin=k;render();
+}
+function trimProblem(){
+  const t=S.tune;if(!t)return null;
+  if(!Number.isFinite(t.draft)||Math.abs(t.draft)>3)return'微调范围为 ±3°。偏差更大时，请重新摆零位并检查装配。';
+  const j=BY[t.key],z=effectiveZero(t.key,t.draft),problem=limitCheck(j,S.cal[t.key],z);
+  if(problem)return problem.kind==='boundary'?'这个修正会使目标位置跨出 0–4095，不能试用。':'这个修正使限位不包含 HOME 站姿，不能试用。';
+  return null;
+}
+function tunePage(){
+  const t=S.tune,j=BY[t.key],saved=S.trim[j.key]||0,err=trimProblem(),changed=t.draft!==saved;
+  return html`<p class="eyebrow">试站 · 单关节微调</p><h1>${j.label} <span class="muted">${j.id}</span></h1><p class="say">先改小角度，再试用看效果。正负号按模型的关节方向，不代表屏幕上的左右。</p>
+    <section class="trim-card"><div class="result-row"><span>本次修正草稿</span><span class="small">上次保存 ${signedDeg(saved)}</span></div><div class="trim-value">${signedDeg(t.draft)} <small>±3°</small></div>
+    <div class="trim-controls">${[-.5,-.1,.1,.5].map(d=>html`<button data-a="trimNudge" data-d="${d}" aria-label="${d>0?'增加':'减少'}${Math.abs(d)}度" ${t.moving?'disabled':''}>${signedDeg(d)}</button>`)}</div>
+    <div class="result-row"><button class="link" data-a="trimReset" ${t.moving?'disabled':''}>恢复原始标定（0°）</button><button class="link" data-a="trimUndo" ${t.moving?'disabled':''}>撤销本次草稿</button></div></section>
+    <p class="hint">原始零位 ${Math.round(S.zero[j.key])} → 草稿零位 ${effectiveZero(j.key,t.draft)} 格。编码器约 0.088°／格，实际修正按整格取值。</p>
+    ${err?html`<div class="note bad" role="alert">${err}</div>`:''}
+    <label class="support-check"><input id="trimSupport" type="checkbox" ${t.supported?'checked':''} ${t.moving?'disabled':''}>已停止行走，并托稳机身，可以小幅试用</label>
+    <button class="btn" data-a="trimTrial" ${!t.supported||err||t.moving?'disabled':''}>${t.moving?'正在缓慢试用…':'试用这个修正'}</button>
+    ${t.tested?html`<div class="note ok">已试用 ${signedDeg(t.applied)}。效果合适再保存；不合适可继续调整或撤销。</div>`:html`<p class="hint">编辑不会立即动作。试用后模型展示相对修正，实物是否合适仍需你确认。</p>`}
+    <button class="btn" data-a="recal" data-k="${j.key}" ${t.moving?'disabled':''}>偏差较大，只重标这颗关节</button>
+    ${historyBlock()}<div class="spring"></div><button class="btn main" data-a="trimSave" data-primary ${!changed||!t.tested||t.applied!==t.draft||err||t.moving?'disabled':''}>效果合适，保存并重新试站</button><button class="link" data-a="trimCancel" ${t.moving?'disabled':''}>取消，保留上次标定</button>`;
+}
+function nudgeTrim(d){
+  const t=S.tune;if(!t||t.moving||![-.5,-.1,.1,.5].includes(d))return;
+  const next=Math.round((t.draft+d)*10)/10;
+  if(Math.abs(next)>3){toast('已到微调边界，请检查装配或重标这颗关节','bad');return}
+  t.draft=next;t.tested=false;render();
+}
+function trialTrim(){
+  const t=S.tune;if(!t||t.moving||!t.supported||trimProblem())return;
+  t.moving=true;t.tested=false;t.until=performance.now()+850;S.torque=true;
+  sim.script=[{k:t.key,to:physicalHome(t.key,t.draft),ms:700,hold:0}];render();
+}
+function saveTrim(){
+  const t=S.tune;if(!t||t.moving||!t.tested||t.applied!==t.draft||t.draft===(S.trim[t.key]||0)||trimProblem())return;
+  const j=BY[t.key],before=S.trim[j.key]||0;S.trim[j.key]=t.draft;
+  addHistory(`${j.id} 号${j.label}：修正 ${signedDeg(before)} → ${signedDeg(t.draft)}`);
+  discardTune();invalidateMotion();S.torque=false;startTry();render();toast('修正已保存在本次演示中，请重新试站确认');
+}
+function beginRecal(k){
+  if(!BY[k]||S.zero[k]==null||isBusy())return;
+  if(tuneDirty()){confirmLeave(()=>{discardTune();beginRecal(k)});return}
+  discardTune();sim.script=[];S.manual=null;S.torque=false;S.step='stand';S.standSub='recal';S.recal={key:k,supported:false,error:null};S.pin=k;render();
+}
+function recalPage(){
+  const r=S.recal,j=BY[r.key];
+  return html`<p class="eyebrow">试站 · 单关节重新标定</p><h1>重摆${j.label}</h1><p class="say">托稳机身，把 ${j.id} 号关节摆回模型的零位参考。只更新这一颗，其他 14 颗保持原来的标定。</p>
+    <div class="note warn">先托住机身，再松开舵机摆零位。取消时原来的标定仍然保留。</div>
+    <section class="scard"><div class="result-row"><span>上次零位</span><b>${effectiveZero(j.key)} 格</b></div><div class="result-row"><span>当前读数</span><b data-pos="${j.key}">${bus[j.key].last}</b></div></section>
+    <label class="support-check"><input id="recalSupport" type="checkbox" ${r.supported?'checked':''}>已托稳机身，按模型摆好这颗关节</label>
+    ${r.error?html`<div class="note bad" role="alert">${r.error}</div>`:''}
+    <div class="spring"></div><button class="btn main" data-a="recalSave" data-primary ${r.supported?'':'disabled'}>记录这颗零位，重新试站</button><button class="link" data-a="recalCancel">取消，保留原来的标定</button>`;
+}
+function saveRecal(){
+  const r=S.recal;if(!r?.supported)return;
+  const j=BY[r.key],z=bus[j.key].u;
+  if(rangeIssue(j,bus[j.key].last,S.cal[j.key])||limitCheck(j,S.cal[j.key],z)){r.error='当前位置不满足零位和限位要求，请检查装配后重新摆正。';render();return}
+  const before=effectiveZero(j.key);S.zero[j.key]=z;delete S.trim[j.key];
+  addHistory(`${j.id} 号${j.label}：单独重标零位 ${before} → ${Math.round(z)} 格`);
+  S.recal=null;invalidateMotion();S.torque=false;startTry();render();toast('这一颗已重标，请重新试站');
+}
+function diagnosisPage(){
+  const kind=S.diagnosis,advice={
+    turn:['身体逐渐向左／右转','先看转向命令是否为 0，再检查零位参考中的双脚朝向和左右髋转向。确认具体关节有偏差后才微调，不能只凭偏左决定修正正负。'],
+    slide:['身体朝前，但向一侧横移','先看横向命令是否为 0，再检查 HOME 站姿的左右承重、脚底接触，以及髋侧摆的零位。'],
+    shake:['摇晃、抖动或左右腿跟随不同','先检查机械松动、供电和目标／实际角差。PID 与模型绑定，先读取当前值；不要照搬其他舵机的 PID。']
+  }[kind];
+  return html`<p class="eyebrow">试站 · 行走偏差排查</p><h1>先分清是哪种偏差</h1><div class="diagnostic-choices">${[['turn','走成弧线'],['slide','向一侧横移'],['shake','摇晃／抖动']].map(([k,n])=>html`<button class="btn ${kind===k?'chosen':''}" data-a="diagnosisKind" data-k="${k}">${n}</button>`)}</div>
+    <section class="scard"><h2>${advice[0]}</h2><p class="say">${advice[1]}</p></section>
+    <ol class="steps"><li>相同地面、速度和距离，先测三次。</li><li>掉头再测，区分地面因素和机器人自身偏差。</li><li>一次只改一颗，先试 0.5°；比较改善后再保存。</li></ol>
+    <p class="hint">当前演示尚未读取真实摇杆、关节误差或 PID，无法自动判断偏差来源。</p><div class="spring"></div><button class="btn main" data-a="standNo" data-primary>已定位关节，选择局部修正</button><button class="link" data-a="repairBack">返回试站</button>`;
 }
 
 // ───────── 3D 手柄：Rusfort "Xbox Elite Controller"（CC-BY-4.0），按键是独立零件，guide 键的 logo 已去掉 ─────────
@@ -752,30 +882,31 @@ const tofBase=()=>S.fault==='tofnorun'?'norun':S.fault==='tofnosensor'?'nosensor
 const camState=now=>{const b=camBase();return b==='ok'&&now-S.sens.t0<600?'wait':b};
 const tofState=now=>{const b=tofBase();return b==='ok'&&now-S.sens.t0<600?'wait':b};
 const CAMTXT={ok:'在线',norun:'服务没启动',noframe:'没有画面'},TOFTXT={ok:'在线',norun:'服务没启动',nosensor:'未检测到'};
-function sensorLine(){
-  const c=camBase(),o=tofBase();
-  return html`<p class="sensline"><span class="${c==='ok'?'':'bad'}">摄像头 ${CAMTXT[c]}</span>　<span class="${o==='norun'?'bad':''}">ToF ${TOFTXT[o]}</span>　<button class="link" data-a="sensors">查看</button></p>`;
-}
 function sensorPage(){
-  const now=performance.now(),c=camState(now),o=tofState(now),G=S.sens,retry=html`<button class="mini wide" data-a="sensRetry">重新检测</button>`;
+  const now=performance.now(),c=camState(now),o=tofState(now),G=S.sens,retry=k=>html`<button class="mini wide" data-a="sensRetry" data-k="${k}">重新检测</button>`;
   const chip=(txt,cls)=>html`<span class="schip ${cls}">${txt}</span>`;
   const cam=c==='wait'?html`<p class="hint">正在连接摄像头…</p>`
-    :c==='norun'?html`<div class="note bad"><strong>摄像头服务没有启动</strong>重启 MicroDuck 再试一次。这不影响走路。</div>${retry}`
-    :c==='noframe'?html`<div class="note bad"><strong>服务正常，但摄像头没有画面</strong>关机后检查摄像头排线有没有插好。</div>${retry}`
+    :c==='norun'?html`<div class="note bad"><strong>摄像头服务没有启动</strong>重启 MicroDuck 再试一次。这不影响走路。</div>${retry('camera')}`
+    :c==='noframe'?html`<div class="note bad"><strong>服务正常，但摄像头没有画面</strong>关机后检查摄像头排线有没有插好。</div>${retry('camera')}`
     :html`<div class="camrow"><canvas id="camCanvas" width="270" height="480" aria-label="摄像头画面（模拟）"></canvas><div class="camside">
        <p class="small">1280×720 · 安装角度 90°</p><p class="hint">画面清楚吗？上下方向对吗？</p>
-       ${G.camOk?html`<p class="sok">✓ 已确认画面正常</p>`:html`<div class="stack"><button class="mini wide" data-a="camOk">画面正常</button><button class="mini wide" data-a="camBad">有问题</button></div>`}
+       ${G.camOk?html`<p class="sok">✓ 已确认画面正常</p><button class="link" data-a="camBad">重新检查画面</button>`:html`<div class="stack"><button class="mini wide" data-a="camOk">画面正常</button><button class="mini wide" data-a="camBad">有问题</button></div>`}
        </div></div>${G.camIssue&&!G.camOk?html`<ul class="tips"><li>模糊或发黑：擦一下镜头，看有没有东西挡住。</li><li>花屏或断断续续：关机后检查排线。</li><li>方向不对：摄像头的安装角度设置不对。</li></ul>`:''}`;
   const tof=o==='wait'?html`<p class="hint">等待第一帧…</p>`
-    :o==='norun'?html`<div class="note bad"><strong>ToF 服务没有启动</strong>重启 MicroDuck 再试一次。这不影响走路。</div>${retry}`
-    :o==='nosensor'?html`<p class="hint">没检测到 ToF。没装就不用管，不算故障；装了的话，关机后检查连线。</p>${retry}`
+    :o==='norun'?html`<div class="note bad"><strong>ToF 服务没有启动</strong>重启 MicroDuck 再试一次。这不影响走路。</div>${retry('tof')}`
+    :o==='nosensor'?html`<p class="hint">没检测到 ToF。没装就不用管，不算故障；装了的话，关机后检查连线。</p>${retry('tof')}`
     :html`<div class="tofrow"><div class="tofgrid" aria-label="8×8 距离（模拟）">${Array.from({length:64},(_,i)=>html`<span class="tz" data-t="${i}"></span>`)}</div><div class="camside">
        <p class="tofnear">最近 <b id="tofNear">—</b></p><p class="small" id="tofInfo"></p>
        ${G.tofOk?html`<p class="sok">✓ 挡手时距离有变化，ToF 正常</p>`:html`<p class="hint">把手挡在 MicroDuck 的嘴前面，约 10 厘米。</p>`}
        </div></div><p class="small">颜色从暖到冷表示从近到远。· 范围内没东西　x 测不出来</p>`;
-  return html`<div class="shead"><h1>传感器检查</h1><button class="mini sback" data-a="sensorsBack" data-primary>返回</button></div><p class="hint">只看数据，不会动舵机，随时可以回来。</p>
-   <section class="scard"><h2>摄像头 ${c==='ok'?(G.camOk?chip('正常','ok'):chip('在线','')):c==='wait'?'':chip(CAMTXT[c],'bad')}</h2>${cam}</section>
-   <section class="scard"><h2>ToF 距离传感器 ${o==='ok'?(G.tofOk?chip('正常','ok'):chip('在线','')):o==='wait'?'':chip(TOFTXT[o],o==='norun'?'bad':'')}</h2>${tof}</section>`;
+  const deviceFoot=(k,passed)=>html`<div class="result-row"><span class="${passed?'sok':'muted'}">${passed?'✓ 已检查':G.skipped[k]?'− 已跳过':'待检查'}</span>${!passed?html`<button class="link" data-a="skipDevice" data-k="${k}">${G.skipped[k]?'已跳过':'跳过此项'}</button>`:''}</div>`;
+  const ready=sensorResolved('camera')&&sensorResolved('tof');
+  return html`<p class="eyebrow">可选检查 · 同一步完成</p><div class="shead"><h1>摄像头与 ToF</h1>${!ready?html`<button class="link" data-a="sensorSkip">直接跳过</button>`:''}</div><p class="say">看看画面，再用手挡一下前方距离传感器。没有安装的项目可以单独跳过。</p>
+    <section class="scard"><h2>摄像头 ${c==='ok'?(G.camOk?chip('已检查','ok'):chip('在线','')):c==='wait'?'':chip(CAMTXT[c],'bad')}</h2>${cam}${deviceFoot('camera',G.camOk)}</section>
+    <section class="scard"><h2>ToF 距离传感器 ${o==='ok'?(G.tofOk?chip('已检查','ok'):chip('在线','')):o==='wait'?'':chip(TOFTXT[o],o==='norun'?'bad':'')}</h2>${tof}${deviceFoot('tof',G.tofOk)}</section>
+    <p class="hint">两项都不是试站的前提。跳过会单独记录，之后可从这一步或完成页补做。</p>
+    <div class="spring"></div><button class="btn main" data-a="sensorNext" data-primary ${ready?'':new Safe('disabled')}>继续试站</button>
+    ${!ready?html`<button class="btn" data-a="sensorSkip">跳过未检查项，继续</button>`:''}`;
 }
 function drawCam(now){
   const cv=$('camCanvas');if(!cv)return;
@@ -800,7 +931,7 @@ function tickTof(now){
   const n=$('tofNear'),f=$('tofInfo');if(n)n.textContent=mn.toFixed(2)+' m';if(f)f.textContent=`15 Hz · 8×8 · ${got}/64 测到 · ${mn.toFixed(2)}–${mx.toFixed(2)} m`;
   // 判定挡手：先看到过没挡的状态，再有 6 格以上进到 30 厘米内。阈值是占位值，要实机确认
   if(close===0)S.sens.seenFree=true;
-  if(close>=6&&S.sens.seenFree&&!S.sens.tofOk){S.sens.tofOk=true;beep(880);toast('ToF 正常：挡手时距离有变化');render()}
+  if(close>=6&&S.sens.seenFree&&!S.sens.tofOk){S.sens.tofOk=true;S.sens.skipped.tof=false;beep(880);toast('ToF 正常：挡手时距离有变化');render()}
 }
 function tickSensors(now){
   const key=camState(now)+'|'+tofState(now);
@@ -812,7 +943,10 @@ function tickSensors(now){
 }
 function panelBody(){
   const torque=S.torque?html`<button class="link" data-a="relax">松开舵机</button>`:blank;
-  if(S.step==='sensors')return sensorPage();
+  if(isSensor(S.step))return sensorPage();
+  if(S.step==='stand'&&S.standSub==='tune')return tunePage();
+  if(S.step==='stand'&&S.standSub==='recal')return recalPage();
+  if(S.step==='stand'&&S.standSub==='diagnose')return diagnosisPage();
   if(S.step==='connect'){
     const C=S.conn,ST=['找到 MicroDuck','登录主控','读取固件版本'];
     if(C.up&&C.sub!=='busy')return html`<h1>已连接</h1><p class="say">${C.addr}</p><ul class="plain"><li>MicroDuck 主控在线</li></ul><div class="spring"></div><button class="btn main" data-a="advance" data-primary>继续</button>${foot(html`<button class="link" data-a="reconnect">换一台或重新连接</button>`)}${aboutNote}`;
@@ -827,7 +961,7 @@ function panelBody(){
     const n=S.scan,head='';
     if(n<15)return html`${head}<h1>正在检查</h1><p class="say">不用动它。已找到 ${n} / 15 颗。</p>${servoList()}<div class="spring"></div>${foot()}`;
     if(offList().length)return html`${head}<h1>${offList().map(j=>j.id).join('、')} 号舵机没有回应</h1><div class="note bad"><strong>${offList().map(j=>`${j.label}（${j.id} 号）`).join('、')}</strong>检查${offList().length>1?'这几颗':'这颗'}舵机的线有没有插紧，再试一次。其余舵机都在线。</div>${servoList()}<div class="spring"></div><button class="btn main" data-a="rescan" data-primary>重新检查</button>${foot()}`;
-    return html`${head}<h1>舵机全部正常在线</h1>${servoList()}${(()=>{const w=J.filter(j=>nearEnd(bus[j.key].last,j));return w.length?html`<div class="note warn"><strong>${w.map(j=>`${j.id} 号`).join('、')}的位置偏离得太多</strong>可能是装配时转过头了，摆零位时会再确认一次。</div>`:''})()}${sensorLine()}<p class="say">把 MicroDuck 架到支架上，腿要悬空。下一步舵机会松开。</p><div class="spring"></div><button class="btn main" data-a="begin" data-primary>开始</button>${foot(html`<button class="link" data-a="pre">舵机还没装到 MicroDuck 上？</button>`)}`;
+    return html`${head}<h1>舵机全部正常在线</h1>${servoList()}${(()=>{const w=J.filter(j=>nearEnd(bus[j.key].last,j));return w.length?html`<div class="note warn"><strong>${w.map(j=>`${j.id} 号`).join('、')}的位置偏离得太多</strong>可能是装配时转过头了，摆零位时会再确认一次。</div>`:''})()}<p class="say">把 MicroDuck 架到支架上，腿要悬空。下一步舵机会松开。</p><div class="spring"></div><button class="btn main" data-a="begin" data-primary>开始</button>${foot(html`<button class="link" data-a="pre">舵机还没装到 MicroDuck 上？</button>`)}`;
   }
   if(S.step==='follow'){
     const j=curJ(),z=ZONES.find(z=>z.k===j.zone),a=S.phase==='a';
@@ -867,11 +1001,16 @@ function panelBody(){
     const head='';
     if(S.standSub==='ready'){
       if(S.tryBad)return html`${head}<h1>舵机接错了</h1><div class="note bad"><strong>该动${S.tryBad.label}（${S.tryBad.id} 号），实物动的不是它</strong>这颗舵机的 ID 或接线错了。关机改好后，重新检查一次。</div><div class="spring"></div><button class="btn main" data-a="fixWire" data-primary>改好了，重新开始</button>${foot(torque)}`;
-      return html`${head}<h1>让 MicroDuck 站起来</h1><p class="say">扶稳 MicroDuck。按下后，它会用 2 秒慢慢进入站姿。</p>${trialBlock()}<div class="spring"></div>${S.manual?'':html`<button class="btn main" data-a="stand" data-primary>站起来</button>`}${foot(torque)}`;
+      return html`${head}<h1>让 MicroDuck 站起来</h1><p class="say">扶稳 MicroDuck。按下后，它会用 2 秒慢慢进入站姿。</p>${trialBlock()}<button class="link" data-a="standNo">复查关节／微调已有标定</button><div class="spring"></div>${S.manual?'':html`<button class="btn main" data-a="stand" data-primary>站起来</button>`}${foot(torque)}`;
     }
     if(S.standSub==='moving')return html`${head}<h1>正在站起来</h1><p class="say">继续扶稳。</p><div class="spring"></div>${foot(torque)}`;
-    if(S.standSub==='confirm')return html`${head}<h1>姿势和屏幕一样吗？</h1><p class="say">对比两条腿和头的角度。</p><div class="spring"></div><div class="row"><button class="btn" data-a="standNo">不一样</button><button class="btn main" data-a="standYes" data-primary>一样</button></div>${foot(torque)}`;
-    return html`${head}<h1>哪里不一样？</h1><p class="say">只需要重摆这一部分。</p><div class="stack">${ZONES.map(z=>html`<button class="btn" data-a="redoZone" data-z="${z.k}">${z.label}</button>`)}</div><div class="spring"></div>${foot(torque)}`;
+    if(S.standSub==='confirm')return html`${head}<h1>姿势和屏幕一样吗？</h1><p class="say">对比两条腿和头的角度。</p><div class="spring"></div><div class="row"><button class="btn" data-a="standNo">有偏差，调整</button><button class="btn main" data-a="standYes" data-primary>一样</button></div>${foot(torque)}`;
+    return html`<p class="eyebrow">试站 · 局部修正</p><h1>哪里需要调整？</h1><p class="say">小偏差可以微调；明显摆错或拆装过，就只重标那颗关节。其他关节的标定会保留。</p>
+      ${jointPicker()}
+      <button class="disc" data-a="repairParts" aria-expanded="${S.poseOpen}"><span>整个部位重新摆零位</span><i>${S.poseOpen?'▴':'▾'}</i></button>
+      ${S.poseOpen?html`<div class="row">${ZONES.map(z=>html`<button class="btn" data-a="redoZone" data-z="${z.k}">${z.label}</button>`)}</div>`:''}
+      <button class="btn" data-a="diagnose">站姿正常，但走路偏左／偏右</button>
+      ${historyBlock()}<div class="spring"></div><button class="btn main" data-a="repairBack" data-primary>返回，重新试站</button>${foot(torque)}`;
   }
   if(S.step==='pad'){
     const P=S.pad,head='',skip=html`<button class="link" data-a="padSkip">跳过，以后再说</button>`;
@@ -889,16 +1028,16 @@ function panelBody(){
     <div class="note bad"><strong>Select 要小心</strong>短按舵机会卸力，MicroDuck 会软下来，先扶住。</div>
     <div class="spring"></div><button class="btn main" data-a="padDone" data-primary>完成</button>${foot()}`;
   }
-  return html`<h1>全部完成</h1><ul class="plain"><li>15 颗舵机的零位都已设好</li><li>姿态传感器已校准，方向正确</li><li>标定结果已保存到 MicroDuck 上</li>${S.pad.skipped?html`<li class="wait">手柄还没连，可以稍后再连</li>`:html`<li>手柄已连接</li>`}</ul><p class="say">换舵机或拆装后，再标定一次就好。</p><button class="btn" data-a="sensors">检查摄像头和 ToF</button>
+  return html`<h1>全部完成</h1><ul class="plain"><li>15 颗舵机的零位都已设好</li><li>姿态传感器已校准，方向正确</li><li>站立姿势已确认</li>${S.pad.skipped?html`<li class="wait">手柄还没连，可以稍后再连</li>`:html`<li>手柄已连接</li>`}</ul><p class="say">换舵机或拆装后，再标定一次就好。</p><section class="scard"><h2>可选检查</h2>${['camera','tof'].map(k=>html`<div class="result-row"><span>${NAME[k]} <b class="${isDone(k)?'sok':''}">${isDone(k)?'已检查':isSkipped(k)?'已跳过':'待检查'}</b></span><button class="mini" data-a="reviewSensor" data-k="${k}">${isDone(k)?'复查':'补做'}</button></div>`)}</section><button class="btn" data-a="reviewRepair">复查关节与微调</button><p class="hint">当前为演示，标定和微调只在本次页面内保留，尚未写入真实机器人。</p>
   <div class="train"><h2>接下来：训练个性化动作</h2><p class="hint">标定好之后，可以用我的训练实验室训练你自己的个性化动作，还能做世界模拟、编辑动作、用云端 GPU 训练。</p>
     <a class="btn main" href="https://github.com/heranhe/microduck-lab-cloud" target="_blank" rel="noopener">在 GitHub 打开训练实验室 ↗</a>
     <p class="small">仓库：heranhe/microduck-lab-cloud。飞特 HD-1910 和官方 XL330 的仿真控制参数不同，训练时要用对应的舵机参数。</p></div><div class="spring"></div><button class="btn main" data-a="${S.pad.skipped?'padBack':'keys'}" data-primary>${S.pad.skipped?'现在连接手柄':'查看按键表'}</button>${foot(html`<button class="link" data-a="restart">重新标定</button>`)}${aboutNote}`;
 }
 let lastStep=null;
 function render(){
-  mount($('rail'),html`${STEPS.map((t,i)=>{const k=STEP_KEYS[i],now=i===stepNo(),done=isDone(k),lock=!now&&!done&&missing(k).length>0;
-    return html`<li class="${now?'now':done?'done':''}${lock?' lock':''}"><button class="rb" data-a="go" data-s="${i}" ${now?new Safe('aria-current="step"'):''}><i>${done&&!now?'✓':i+1}</i><span>${t}</span></button></li>`})}`);
-  if(S.step!==lastStep){S.pin=null;S.hover=null;lastStep=S.step}
+  mount($('rail'),html`${STEPS.map((t,i)=>{const k=STEP_KEYS[i],now=i===stepNo(),done=isDone(k),skipped=isSkipped(k),lock=!now&&!done&&missing(k).length>0;
+    return html`<li class="${now?'now':done?'done':skipped?'skipped':''}${lock?' lock':''}"><button class="rb" data-a="go" data-s="${i}" aria-label="${t}，${now?'当前步骤':done?'已完成':skipped?skipLabel(k):'待完成'}${OPTIONAL.has(k)?'，可选':''}" ${now?new Safe('aria-current="step"'):''}><i>${done&&!now?'✓':skipped&&!now?'−':i+1}</i><span>${t}${OPTIONAL.has(k)?html`<small>${skipped?skipLabel(k):'可选'}</small>`:''}</span></button></li>`})}`);
+  if(S.step!==lastStep){S.pin=S.tune?.key||S.recal?.key||null;S.hover=null;lastStep=S.step}
   {const L=$('link');L.replaceChildren();
     if(S.conn.up){L.append('已连接');const a=document.createElement('span');a.className='addr';a.textContent=' '+S.conn.addr;L.append(a);L.title=S.conn.addr}else L.removeAttribute('title')}
   mount($('panel'),panelBody());
@@ -917,7 +1056,9 @@ function renderDock(){
   if(S.step==='pose')ctl=html`<button class="sbtn" data-a="simPose">模拟：摆好${ZONES[S.zoneI].label}</button>`;
   if(S.step==='imu'&&!S.imuErr)ctl=html`<button class="sbtn" data-a="simImu">模拟：照做</button>`;
   if(S.step==='stand'&&S.manual)note=trialNote();
-  if(S.step==='sensors'){note='摄像头画面和 ToF 距离都是模拟数据。';if(tofBase()==='ok')ctl=html`<button class="sbtn" data-a="simHand">模拟：用手挡一下</button>`}
+  if(isSensor(S.step)){note='摄像头画面和 ToF 距离都是模拟数据。';if(tofBase()==='ok')ctl=html`<button class="sbtn" data-a="simHand">模拟：用手挡一下</button>`}
+  if(S.step==='stand'&&S.tune)note='修正先留在草稿中；点击试用才改变模拟姿态。保存后需重新试站。';
+  if(S.step==='stand'&&S.recal)ctl=html`<button class="sbtn" data-a="simRecal">模拟：摆好这一颗</button>`;
   if(S.step==='stand'&&S.standSub==='confirm')note=S.poseOff?'模拟实物：左踝比屏幕歪了约 25°。':'模拟实物：姿势和屏幕一样。';
   if(S.step==='pad'&&S.pad.sub==='lesson'){ctl=html`<button class="sbtn" data-a="padSim">模拟：按下 ${PAD.keys[LESSONS[S.pad.i].key][0]}</button>`;note='也可以直接点手柄图上发亮的键。'}
   if(S.step==='pad'&&S.pad.sub==='card')note='可以点手柄或下面的列表，看 MicroDuck 的反应。A、X、LB、RB 在这版固件里没有功能。';
@@ -932,7 +1073,7 @@ function runFollowDemo(){
 }
 function goPose(z){S.step='pose';S.zoneI=z;S.poseErr=null;S.torque=Object.keys(S.locked).length>0;render()}
 function redoZone(z){
-  S.ok.try=false;sim.script=[];inZone(z).forEach(j=>{delete S.zero[j.key]});delete S.locked[z];
+  invalidateMotion();S.torque=false;sim.script=[];inZone(z).forEach(j=>{delete S.zero[j.key];delete S.trim[j.key]});delete S.locked[z];
   if(S.fault==='pose'&&z==='left')setFault('none');
   if(z==='left')S.poseOff=false;
   S.redo=z;S.step='pose';S.zoneI=ZONES.findIndex(x=>x.k===z);S.poseErr=null;render();
@@ -972,7 +1113,7 @@ const act={
  rescan(){setFault('none');scanStart()},
  go(el){
    const k=STEP_KEYS[+el.dataset.s];
-   if(S.conn.sub==='busy'||S.scanning||(S.step==='stand'&&S.standSub==='moving'))return;
+   if(isBusy())return;
    if(k===STEP_KEYS[stepNo()])return;
    if(missing(k).length){beep(220);openBlocked(k);return}
    goStep(k);
@@ -988,7 +1129,7 @@ const act={
  demoAll(){S.autoAll=true;dwellMs=180;timeScale=.28;runFollowDemo()},
  redoJoint(){sim.script=[];resetPrompt();render()},
  fixWrong(){setFault('none');sim.script=[];resetPrompt();render()},
- sample(){dlg.close();S.cal=Object.fromEntries(J.map(j=>[j.key,{...S.cal[j.key],measuring:true}]));S.zero={};S.locked={};S.redo=null;startFollow(J.slice())},
+ sample(){invalidateMotion();S.ok.imu=false;S.trim={};dlg.close();S.cal=Object.fromEntries(J.map(j=>[j.key,{...S.cal[j.key],measuring:true}]));S.zero={};S.locked={};S.redo=null;startFollow(J.slice())},
  cancelSample(){sim.script=[];S.autoAll=false;timeScale=1;dwellMs=900;S.cal=presetCal();S.queue=[];goPose(0);toast('已改用预设方向和范围')},
  simPose(){sim.script=[];const z=ZONES[S.zoneI];inZone(z.k).forEach(j=>sim.q[j.key]=rnd(-1.5,1.5)*D2R);if(S.fault==='pose'&&z.k==='left')sim.q.left_ankle=25*D2R;S.poseErr=null;S.limitErr=null;render()},
  simImu(){const sc=dwellMs+300;sim.script=[{tilt:{p:0,r:0},ms:300,hold:sc},{tilt:{p:24,r:0},ms:800,hold:sc},{tilt:{p:0,r:24},ms:900,hold:sc},{tilt:{p:0,r:0},ms:500,hold:0}]},
@@ -996,33 +1137,45 @@ const act={
  manualToggle(){S.manualOpen=!S.manualOpen;render()},
  trial(el){S.manual=el.dataset.k;S.tryBad=null;render()},
  trialSame(){const j=BY[S.manual];toast(`${j.label}方向确认`);S.manual=null;render()},
- trialFlip(){const j=BY[S.manual];S.cal[j.key].dir*=-1;S.flipped[j.key]=true;beep(660);toast(`${j.label}的方向已翻转，再试动一次确认`);render()},
+ trialFlip(){invalidateMotion();const j=BY[S.manual];S.cal[j.key].dir*=-1;S.flipped[j.key]=true;beep(660);toast(`${j.label}的方向已翻转，再试动一次确认`);render()},
  trialWire(){S.tryBad=BY[S.manual];S.manual=null;beep(220);render()},
  fixWire(){act.restart()},
- stand(){S.manual=null;S.standSub='moving';S.standT=performance.now();render()},
- standYes(){S.ok.try=true;toast('站立姿势已确认');advance()},
- standNo(){S.standSub='pick';render()},
+ stand(){if(missing('try').length){openBlocked('try');return}S.torque=true;S.manual=null;S.standSub='moving';S.standT=performance.now();render()},
+ standYes(){if(S.standSub!=='confirm')return;S.ok.try=true;toast('站立姿势已确认');advance()},
+ standNo(){S.poseOpen=false;S.standSub='pick';render()},
  redoZone(el){redoZone(el.dataset.z)},
  padPair(){S.pad.sub='search';render();clearTimeout(padTimer);padTimer=setTimeout(()=>{if(S.pad.sub!=='search')return;if(S.fault==='nopad'){S.pad.sub='fail';beep(220);toast('没找到手柄','bad')}else{S.pad.sub='safe';beep(880);toast(`手柄已连接：${PAD.name}`)}render()},1600)},
  padLearn(){S.pad.sub='lesson';S.pad.i=0;S.pad.seen={};S.padMode='stand';render()},
  padSim(){padPress(LESSONS[S.pad.i].key)},
  padCard(){S.pad.sub='card';S.pad.hint=null;render()},
- padSkip(){clearTimeout(padTimer);S.pad.skipped=true;S.step='done';render();toast('已跳过手柄，之后可以再连接')},
- padDone(){S.ok.pad=true;S.step='done';render()},
+ padSkip(){clearTimeout(padTimer);S.pad.skipped=true;S.ok.pad=false;advance();toast('已跳过手柄，之后可以再连接')},
+ padDone(){S.ok.pad=true;S.pad.skipped=false;advance()},
  padBack(){S.step='pad';S.pad.sub='ready';S.pad.skipped=false;if(S.fault==='nopad')setFault('none');render()},
  keys(){openKeys()},
- restart(){if(dlg.open)dlg.close();setFault('none');PADV.active=null;S.poseOpen=false;S.pin=null;S.ok={};S.limitErr=null;toast('进度已清除，重新开始');clearTimeout(padTimer);S.cal=presetCal();S.zero={};S.locked={};S.redo=null;S.tryOnly=false;S.drill=null;S.tryBad=null;S.fixed=[];S.flipped={};S.manual=null;S.manualOpen=false;S.poseOff=false;S.torque=false;S.queue=[];S.pad={sub:'ready',i:0,skipped:false,hint:null,seen:{}};S.padMode='stand';S.anim=null;padYaw=0;J.forEach(j=>sim.q[j.key]=rnd(-6,6)*D2R);sim.q.mouth=0;S.step='check';scanStart()},
- sensors(){
-   if(S.conn.sub==='busy'||S.scanning||(S.step==='stand'&&S.standSub==='moving')||S.step==='sensors')return;
-   if(S.step==='follow'){toast('正在测量关节范围，先完成或退出再看传感器','bad');return}
-   if(missing('sensors').length){beep(220);openBlocked('sensors');return}
-   sim.script=[];sim.tilt={p:0,r:0};S.manual=null;
-   const G=S.sens;G.from=S.step;G.t0=performance.now();G.seenFree=false;G.handUntil=0;G.key='';S.step='sensors';render();
- },
- sensorsBack(){const f=S.sens.from||'check';S.step=f;if(f==='imu')imuReset();render()},
- sensRetry(){S.sens.t0=performance.now();S.sens.key='';render()},
- camOk(){S.sens.camOk=true;S.sens.camIssue=false;toast('摄像头画面正常');render()},
- camBad(){S.sens.camIssue=true;render()},
+ restart(){if(dlg.open)dlg.close();setFault('none');PADV.active=null;S.poseOpen=false;S.pin=null;S.ok={};S.limitErr=null;toast('进度已清除，重新开始');clearTimeout(padTimer);S.cal=presetCal();S.zero={};S.trim={};S.history=[];S.tune=null;S.recal=null;S.sens={skipped:{camera:false,tof:false},t0:0,key:'',last:0,frames:0,camOk:false,camIssue:false,tofOk:false,seenFree:false,handUntil:0};S.locked={};S.redo=null;S.tryOnly=false;S.drill=null;S.tryBad=null;S.fixed=[];S.flipped={};S.manual=null;S.manualOpen=false;S.poseOff=false;S.torque=false;S.queue=[];S.pad={sub:'ready',i:0,skipped:false,hint:null,seen:{}};S.padMode='stand';S.anim=null;padYaw=0;J.forEach(j=>sim.q[j.key]=rnd(-6,6)*D2R);sim.q.mouth=0;S.step='check';scanStart()},
+ sensorNext(){if(!isSensor(S.step)||!sensorResolved('camera')||!sensorResolved('tof'))return;advance()},
+ sensorSkip(){if(!isSensor(S.step))return;for(const k of ['camera','tof'])if(!isDone(k))S.sens.skipped[k]=true;advance()},
+ skipDevice(el){if(!isSensor(S.step)||!['camera','tof'].includes(el.dataset.k))return;S.sens.skipped[el.dataset.k]=true;render()},
+ reviewSensor(){goStep('sensors')},
+ sensRetry(el){if(el.dataset.k==='camera'){S.sens.camOk=false;S.sens.camIssue=false}else{S.sens.tofOk=false;S.sens.seenFree=false;S.sens.handUntil=0}S.sens.t0=performance.now();S.sens.key='';render()},
+ camOk(){if(S.step!=='sensors'||camState(performance.now())!=='ok')return;S.sens.camOk=true;S.sens.skipped.camera=false;S.sens.camIssue=false;toast('摄像头画面正常');render()},
+ camBad(){S.sens.camOk=false;S.sens.camIssue=true;render()},
+ repairParts(){S.poseOpen=!S.poseOpen;render()},
+ repairBack(){S.recal=null;discardTune();startTry();render()},
+ reviewRepair(){goStep('try');S.standSub='pick';render()},
+ tune(el){openTune(el.dataset.k)},
+ trimNudge(el){nudgeTrim(Number(el.dataset.d))},
+ trimReset(){if(!S.tune||S.tune.moving)return;S.tune.draft=0;S.tune.tested=false;render()},
+ trimUndo(){if(!S.tune||S.tune.moving)return;S.tune.draft=S.trim[S.tune.key]||0;S.tune.tested=false;restoreTunePose();S.tune.applied=null;render()},
+ trimTrial(){trialTrim()},
+ trimSave(){saveTrim()},
+ trimCancel(){if(S.tune?.moving)return;if(tuneDirty())confirmLeave(()=>{discardTune();S.standSub='pick';render()});else{discardTune();S.standSub='pick';render()}},
+ recal(el){beginRecal(el.dataset.k)},
+ recalSave(){saveRecal()},
+ recalCancel(){S.recal=null;S.standSub='pick';render()},
+ simRecal(){if(S.recal){sim.q[S.recal.key]=0;readBus();render()}},
+ diagnose(){S.standSub='diagnose';render()},
+ diagnosisKind(el){S.diagnosis=el.dataset.k;render()},
  simHand(){S.sens.handUntil=performance.now()+1800},
  adv(){openAdvanced()},
  about(){openAbout()},
@@ -1030,17 +1183,20 @@ const act={
  pre(){openPre()},
 };
 let padTimer=0;
+window.addEventListener('beforeunload',e=>{if(tuneDirty()){e.preventDefault();e.returnValue=''}});
 document.addEventListener('click',e=>{
   const sv=e.target.closest('[data-j]');
-  if(sv){S.pin=S.pin===sv.dataset.j?null:sv.dataset.j;applySel();return}
-  if(S.pin&&e.target.tagName!=='CANVAS'&&!e.target.closest('#idSwitch,dialog')){S.pin=null;applySel()}
+  if(sv){if(S.recal)return;if(S.step==='stand'&&['pick','tune'].includes(S.standSub)){openTune(sv.dataset.j);return}S.pin=S.pin===sv.dataset.j?null:sv.dataset.j;applySel();return}
+  if(S.pin&&!S.tune&&!S.recal&&e.target.tagName!=='CANVAS'&&!e.target.closest('#idSwitch,dialog')){S.pin=null;applySel()}
   const p=e.target.closest('[data-pad]');
   if(p&&p.closest('dialog')){PADV.active=p.dataset.pad;document.querySelectorAll('dialog .keyrow').forEach(x=>x.classList.toggle('hot',x===p));attachPad();return}
   if(p){padPress(p.dataset.pad);return}
-  const b=e.target.closest('[data-a]');if(!b)return;initAudio();const f=act[b.dataset.a];if(f)f(b);
+  const b=e.target.closest('[data-a]');if(!b||b.disabled)return;if(isBusy()&&!['relax'].includes(b.dataset.a))return;initAudio();const f=act[b.dataset.a];if(f)f(b);
 });
 document.addEventListener('change',e=>{
   if(e.target.id==='fault'){const v=e.target.value;setFault(v);if(S.step==='check')scanStart();else render()}
+  if(e.target.id==='trimSupport'&&S.tune){S.tune.supported=e.target.checked;render()}
+  if(e.target.id==='recalSupport'&&S.recal){S.recal.supported=e.target.checked;render()}
   if(e.target.id==='idToggle'){labelsOn=e.target.checked;render()}
 });
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.closest('.field'))$('panel').querySelector('[data-primary]')?.click()});
@@ -1056,11 +1212,11 @@ function applySel(){showSel();updateScene()}
 const dlg=$('dlg');
 function openAdvanced(){
   dlg.className='';
-  const rows=J.map(j=>{const c=S.cal[j.key],z=S.zero[j.key],r=c&&z!=null&&(c.preset||c.uA!=null)?computeJoint(c,z):null;
+  const rows=J.map(j=>{const c=S.cal[j.key],z=effectiveZero(j.key),r=c&&z!=null&&(c.preset||c.uA!=null)?computeJoint(c,z):null;
     const src=c.preset?'预设':c.uA!=null?'实测':'待测';
-    return html`<tr><td>${j.label}</td><td>${j.id}</td><td>${j.lo}～${j.hi}${j.key==='mouth'?'（估计）':''}</td><td>${windowOf(j,c.dir).join('–')}</td><td>${bus[j.key].last}</td><td>${c.dir>0?'+1':'−1'}</td><td>${src}</td><td>${r?r.zero_raw:'—'}</td><td>${r?(r.min_rad*R2D).toFixed(1):'—'}</td><td>${r?(r.max_rad*R2D).toFixed(1):'—'}</td></tr>`});
-  mount(dlg,html`<h2>高级模式</h2><p>工程师看的数据都在这里，新手流程不需要它。</p>
-  <div class="tw"><table><thead><tr><th>关节</th><th>ID</th><th>官方范围 °</th><th>零位应在</th><th>当前读数</th><th>方向</th><th>来源</th><th>零位</th><th>最小角 °</th><th>最大角 °</th></tr></thead><tbody>${rows}</tbody></table></div>
+    return html`<tr><td>${j.label}</td><td>${j.id}</td><td>${j.lo}～${j.hi}${j.key==='mouth'?'（估计）':''}</td><td>${windowOf(j,c.dir).join('–')}</td><td>${bus[j.key].last}</td><td>${c.dir>0?'+1':'−1'}</td><td>${src}</td><td>${r?r.zero_raw:'—'}</td><td>${signedDeg(S.trim[j.key]||0)}</td><td>${r?(calibratedAngle(j.key)*R2D).toFixed(1):'—'}</td><td>${r?(r.min_rad*R2D).toFixed(1):'—'}</td><td>${r?(r.max_rad*R2D).toFixed(1):'—'}</td></tr>`});
+  mount(dlg,html`<h2>高级模式</h2><p>有效零位已包含保存的微调；反馈角与导出目标使用同一份标定。新手流程不需要修改这里。</p>
+  <div class="tw"><table><thead><tr><th>关节</th><th>ID</th><th>官方范围 °</th><th>零位应在</th><th>当前读数</th><th>方向</th><th>来源</th><th>有效零位</th><th>修正</th><th>反馈角 °</th><th>最小角 °</th><th>最大角 °</th></tr></thead><tbody>${rows}</tbody></table></div>
   <p class="small">“官方范围”来自 MicroDuck 官方仿真模型（MJCF）里每个关节的 range，各不相同。官方的控制程序 robotd 并不检查这些范围，官方设计文档里写明了这一点，所以本工具用它们做装配检查：“零位应在”是这颗舵机在零位姿势时位置要落在的区间，落在区间外，转到头就会超出 0–4095。你的 HD-1910 机械结构实测范围可能不同，嘴的范围是估计值。</p>
   <p class="small">膝盖（13、23 号）在官方 MicroDuck 里内置了 −512 格（−45°）的偏移，飞特固件没有，所以膝盖的零位读数可能和 2048 差约 512 格。飞特固件加载标定时还会检查两条规则：限位对应的位置必须在 0–4095 内，限位必须包含官方站姿角度。本工具设零位时按同样的规则检查。</p>
   <p><b>测量关节范围。</b>用手把 15 个关节分别掰到两个方向的底，测出转动方向和限位。同一版结构的 MicroDuck 只需要测一次，结果会成为后面所有 MicroDuck 的预设。</p>
@@ -1111,7 +1267,7 @@ function openRelax(){
   dlg.className='small';
   mount(dlg,html`<h2>松开舵机？</h2><p>松开后 MicroDuck 会塌下来。先用手托住。</p><div class="dlgbtns"><button class="btn" id="closeDlg">取消</button><button class="btn main" id="okDlg">已托住，松开</button></div>`);
   dlg.showModal();$('closeDlg').onclick=()=>dlg.close();
-  $('okDlg').onclick=()=>{S.torque=false;dlg.close();render();toast('舵机已松开')};
+  $('okDlg').onclick=()=>{discardTune();S.recal=null;invalidateMotion();S.torque=false;if(S.step==='stand')startTry();dlg.close();render();toast('舵机已松开')};
 }
 function openPre(){
   dlg.className='small';
@@ -1145,6 +1301,7 @@ function labelSet(){
   if(S.step==='connect')return[];
   if(S.step==='pose')return inZone(ZONES[S.zoneI].k);
   if(S.step==='follow'){const j=curJ();return j?[j]:[]}
+  if(S.step==='stand'&&['pick','tune','recal'].includes(S.standSub))return J;
   if(S.step==='stand'&&(S.manual||S.tryBad))return[BY[S.manual||S.tryBad.key]];
   return[];
 }
@@ -1317,10 +1474,12 @@ function castServo(ev){
   return hit&&hit.object.userData.servo?hit.object.userData.servo:null;
 }
 function stagePick(ev){
-  if(S.step!=='check'&&S.step!=='pose')return;
+  if(S.step!=='check'&&S.step!=='pose'&&!(S.step==='stand'&&['pick','tune','recal'].includes(S.standSub)))return;
   if(S.step==='check'&&S.scanning)return;
   const k=castServo(ev);
+  if(k&&S.step==='stand'){if(S.recal)return;if(S.tune?.moving)return;openTune(k);return}
   if(k){if(S.step==='pose'&&BY[k].zone===ZONES[S.zoneI].k)S.poseOpen=true;S.pin=k;if(S.step==='pose')render();else applySel();return}
+  if(S.tune||S.recal)return;
   if(S.pin){S.pin=null;if(S.step==='pose')render();else applySel()}
 }
 function makeArrow(){
@@ -1398,10 +1557,11 @@ function updateScene(){
   if(S.step==='stand'&&S.standSub==='ready'){
     if(S.tryBad){L.red=[S.tryBad.key];L.ghost=true;cz=S.tryBad.zone}
     else if(S.manual){cz=BY[S.manual].zone;L.ghost=true;L.hot=[S.manual];L.mid=chain([S.manual])}}
-  if(S.step==='sensors')cz='head';
+  if(S.step==='stand'&&S.pin){cz=BY[S.pin].zone;L.ghost=true;L.hot=[S.pin];L.mid=chain([S.pin])}
+  if(isSensor(S.step))cz='head';
   setLook(L);
   if(cz!==lastCz){const c=CAM[cz];Object.assign(view.tgt,c);view.az=0;view.el=0;lastCz=cz}
-  $('stageTag').textContent=S.pin?'点空白处返回实体':S.step==='sensors'?'摄像头和 ToF 都在头部':S.step==='pose'?'屏幕上是要摆成的样子，点舵机可单独查看':S.step==='check'?'点舵机可单独查看，拖动可旋转':S.step==='follow'?'粉色舵机带动的部分会动':(S.step==='stand'&&S.manual)?'屏幕上是应该动的方向':'拖动可旋转查看';
+  $('stageTag').textContent=S.tune?'粉色关节 · 正负方向与模型关节坐标一致':S.recal?'单关节零位参考 · 其他标定保留':S.pin?'点空白处返回实体':isSensor(S.step)?'可选检查 · 可直接跳过':S.step==='pose'?'屏幕上是要摆成的样子，点舵机可单独查看':S.step==='check'?'点舵机可单独查看，拖动可旋转':S.step==='follow'?'粉色舵机带动的部分会动':(S.step==='stand'&&S.manual)?'屏幕上是应该动的方向':'拖动可旋转查看';
 }
 function setArrow(active,positive){
   arrowP.visible=arrowN.visible=false;
@@ -1430,6 +1590,8 @@ function poseFor(t,now){
   }else if(S.step==='stand'){
     const f=S.standSub==='moving'?Math.min(1,(now-S.standT)/2000):S.standSub==='ready'?0:1;
     for(const k in HOME)q[k]=HOME[k]*D2R*f;
+    if(S.recal)q[S.recal.key]=0;
+    if(S.tune){const t=S.tune;q[t.key]=(HOME[t.key]||0)*D2R+(t.applied!=null?t.applied-(S.trim[t.key]||0):0)*D2R;arrowKey=t.key;arrowPos=t.draft>=(S.trim[t.key]||0)}
     if(S.standSub==='ready'&&S.manual){const j=BY[S.manual],P=1.6,lim=Math.min(6,Math.abs(j.hi)*.5,Math.abs(j.lo)*.9),sv=reduced?.7:Math.sin((t/P)*2*Math.PI);q[S.manual]=sv*lim*D2R;arrowKey=S.manual;arrowPos=sv>=0}
   }else if(S.step==='pad'||S.step==='done'){
     const base=S.padMode==='sit'?SIT:HOME;
@@ -1482,7 +1644,8 @@ function frame(now){
   tickScript(now);readBus();
   if(S.step==='follow')tickFollow(now);
   if(S.step==='imu')tickImu(now);
-  if(S.step==='sensors')tickSensors(now);
+  if(isSensor(S.step))tickSensors(now);
+  if(S.tune?.moving&&now>=S.tune.until){S.tune.moving=false;S.tune.tested=true;S.tune.applied=S.tune.draft;render()}
   if(S.step==='stand'&&S.standSub==='moving'&&now-S.standT>2100){S.standSub='confirm';render()}
   if(S.step==='follow'&&sim.script.length&&now-lastSlider>80){const h=$('hand'),k=driveKey();if(h&&k)h.value=sliderVal(k);lastSlider=now}
   if(now-lastPos>100){lastPos=now;

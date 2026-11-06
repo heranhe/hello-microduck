@@ -9,6 +9,7 @@
 """
 from pathlib import Path
 import html
+import re
 import shutil
 
 ROOT = Path(__file__).parent
@@ -29,10 +30,6 @@ FEETECH = [
 PAGES = [
     ("index.html", "index.html", "hello-microduck", 0),
     ("feetech/index.html", "feetech/index.html", "飞特 HD-1910 方案", 0),
-    *[
-        (f"feetech/{slug}.html", f"feetech/{slug}.html", f"第 {i} 步：{name}", i)
-        for i, (slug, name) in enumerate(FEETECH, 1)
-    ],
     ("xl330/index.html", "xl330/index.html", "官方 XL330 方案", 0),
 ]
 
@@ -48,19 +45,19 @@ def step_nav(step: int, up: str) -> str:
         cls = "now" if i == step else ("done" if i < step else "")
         cur = ' aria-current="step"' if i == step else ""
         items.append(
-            f'<li class="{cls}"><a href="{up}feetech/{slug}.html"{cur}><b>{i}</b><span>{html.escape(name)}</span></a></li>'
+            f'<li class="{cls}"><a href="#{slug}"{cur}><b>{i}</b><span>{html.escape(name)}</span></a></li>'
         )
     return f'<nav class="steps" aria-label="飞特方案的步骤"><ol>{"".join(items)}</ol></nav>'
 
 
 def pager(step: int, up: str) -> str:
     prev = (
-        f'<a class="btn" href="{up}feetech/{FEETECH[step - 2][0]}.html">← 上一步：{FEETECH[step - 2][1]}</a>'
+        f'<a class="btn" href="#{FEETECH[step - 2][0]}">↑ 上一步：{FEETECH[step - 2][1]}</a>'
         if step > 1
-        else f'<a class="btn" href="{up}feetech/">← 方案总览</a>'
+        else '<a class="btn" href="#overview">← 方案总览</a>'
     )
     nxt = (
-        f'<a class="btn main" href="{up}feetech/{FEETECH[step][0]}.html">下一步：{FEETECH[step][1]} →</a>'
+        f'<a class="btn main" href="#{FEETECH[step][0]}">继续：{FEETECH[step][1]} ↓</a>'
         if step < len(FEETECH)
         else f'<a class="btn main" href="{up}tool/">打开调试工具 →</a>'
     )
@@ -70,14 +67,15 @@ def pager(step: int, up: str) -> str:
 def page(title: str, body: str, step: int, depth: int) -> str:
     up = rel(depth)
     full_title = "hello-microduck" if title == "hello-microduck" else f"{title} · hello-microduck"
-    eyebrow = (
-        f'<p class="eyebrow">飞特 HD-1910 · 第 {step} 步，共 {len(FEETECH)} 步</p>' if step else ""
-    )
-    layout = (
-        f'<div class="with-steps">{step_nav(step, up)}<main class="content">{eyebrow}{body}{pager(step, up)}</main></div>'
-        if step
-        else f'<main class="content wide">{body}</main>'
-    )
+    if title == "飞特 HD-1910 方案":
+        sections = [f'<section id="overview">{body}</section>']
+        for i, (slug, name) in enumerate(FEETECH, 1):
+            content = (SRC / "feetech" / f"{slug}.html").read_text(encoding="utf-8")
+            content = re.sub(r'<(/?)h([1-3])([^>]*)>', lambda m: f'<{m[1]}h{int(m[2]) + 1}{m[3]}>', content)
+            sections.append(f'<section class="guide-section" id="{slug}" aria-label="第 {i} 步：{html.escape(name)}"><p class="eyebrow">第 {i} 步，共 {len(FEETECH)} 步</p>{content}{pager(i, up)}</section>')
+        layout = f'<div class="with-steps guide">{step_nav(1, up)}<main class="content">{"".join(sections)}</main></div>'
+    else:
+        layout = f'<main class="content wide">{body}</main>'
     return f"""<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -85,13 +83,15 @@ def page(title: str, body: str, step: int, depth: int) -> str:
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>{html.escape(full_title)}</title>
 <meta name="description" content="手把手做一只 MicroDuck：材料、接线、写系统、标定，一步一步来。非官方教程。">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Noto+Sans+SC:wght@400;500;700;900&display=swap">
 <link rel="stylesheet" href="{up}assets/style.css">
+<script src="{up}assets/guide.js" defer></script>
 </head>
 <body>
 <header class="top">
-  <a class="brand" href="{up}">hello-microduck</a>
+  <div class="site-identity">
+    <a class="brand" href="{up}">hello-microduck</a>
+    <a class="creator-link" href="https://www.xiaohongshu.com/user/profile/56587f61b8ce1a583ad11678" target="_blank" rel="noopener" aria-label="我的小红书主页（新窗口打开）">我的小红书 ↗</a>
+  </div>
   <nav class="topnav" aria-label="网站导航">
     <a href="{up}feetech/">飞特方案</a>
     <a href="{up}xl330/">XL330 方案</a>
@@ -123,6 +123,14 @@ def main() -> None:
     print("生成 site/tool/index.html")
     shutil.copy(ROOT / "src" / "style.css", OUT / "assets" / "style.css")
     print("生成 site/assets/style.css")
+    shutil.copy(ROOT / "src" / "guide.js", OUT / "assets" / "guide.js")
+    redirects = []
+    for slug, _ in FEETECH:
+        for suffix in ("", ".html", "/"):
+            redirects.append(f'/feetech/{slug}{suffix} /feetech/#{slug} 301')
+        # 旧的独立页面统一进入长教程的对应小节。
+        (OUT / "feetech" / f"{slug}.html").unlink(missing_ok=True)
+    (OUT / "_redirects").write_text("\n".join(redirects) + "\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

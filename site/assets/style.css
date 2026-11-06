@@ -1,4 +1,5 @@
 /* 版式：顶栏 + 左侧步骤导航 + 正文一栏。深色配色和调试工具一致：墨黑底、奶白字、橙色按钮、青色表示正常。 */
+@font-face{font-family:Anton;font-style:normal;font-weight:400;font-display:swap;src:url('./fonts/anton.ttf') format('truetype')}
 :root{
   --bg:#08080c; --panel:#101018; --ink:#faf8f2; --muted:rgba(250,248,242,.62); --line:rgba(250,248,242,.16); --frame:rgba(250,248,242,.88);
   --act:#ff7a2f; --act-ink:#101018; --hot:#ff2fa8; --good:#2ff0e6; --warn:#ffd23f; --bad:#ff4b3a;
@@ -8,7 +9,7 @@
   color-scheme:dark;
 }
 *{box-sizing:border-box}
-html{scroll-behavior:smooth}
+html{scroll-behavior:auto}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.75 var(--sans)}
 a{color:var(--good);text-underline-offset:3px}
@@ -19,6 +20,9 @@ img{max-width:100%;height:auto;display:block}
   padding-block:12px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
   background:var(--bg);border-bottom:2px solid var(--frame)}
 .brand{font:400 22px/1 var(--display);letter-spacing:.04em;color:var(--ink);text-decoration:none}
+.site-identity{display:flex;align-items:center;gap:10px 16px;flex-wrap:wrap}
+.creator-link{font-size:13px;line-height:1.5;color:var(--muted);text-decoration:none;white-space:nowrap}
+.creator-link:hover{color:var(--good)}
 .topnav{display:flex;gap:18px;flex-wrap:wrap;font-size:14px}
 .topnav a{color:var(--muted);text-decoration:none}
 .topnav a:hover{color:var(--ink)}
@@ -28,7 +32,7 @@ img{max-width:100%;height:auto;display:block}
 .content{min-width:0;max-width:760px}
 .content.wide{max-width:960px;margin:0 auto;padding-block:40px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 
-.steps{position:sticky;top:84px;align-self:start}
+.steps{position:sticky;top:84px;align-self:start;min-width:0}
 .steps ol{list-style:none;margin:0;padding:0;display:grid;gap:4px}
 .steps a{display:flex;align-items:center;gap:12px;padding:8px 10px;color:var(--muted);text-decoration:none;border:1px solid transparent}
 .steps a:hover{color:var(--ink);border-color:var(--line)}
@@ -56,6 +60,13 @@ figcaption b{color:var(--ink);font-family:var(--mono);font-weight:600;margin-rig
 .figs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 .figs figure{margin:0}
 .figs img{max-height:420px}
+.wiring-diagram img{width:100%;max-height:none}
+.guide-section{margin-top:64px;padding-top:32px;border-top:2px solid var(--line);scroll-margin-top:88px}
+.guide-section [id]{scroll-margin-top:88px}
+#overview{scroll-margin-top:88px}
+.guide-section>h2{margin:0 0 12px;font-size:34px}
+.guide-section h3{margin:36px 0 12px;font-size:23px}
+.guide-section .need h3{margin:0 0 6px;font-size:15px}
 
 .tw{overflow-x:auto;margin:12px 0 20px;border:1px solid var(--line)}
 table{border-collapse:collapse;width:100%;font-size:15px}
@@ -107,13 +118,21 @@ ol.road li::before{content:counter(s);width:32px;height:32px;display:grid;place-
 ol.road b{display:block}
 ol.road span{color:var(--muted);font-size:15px}
 code{font-family:var(--mono);font-size:.92em;background:var(--panel);border:1px solid var(--line);padding:1px 5px}
+.guide code{overflow-wrap:anywhere}
 
 .foot{border-top:1px solid var(--line);color:var(--muted);font-size:14px;
   padding-block:24px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .foot p{max-width:1120px;margin:0 auto 6px}
 
 @media (max-width:860px){
-  .with-steps{grid-template-columns:1fr;gap:20px;padding-top:16px}
+  .top:has(+.guide){position:static}
+  .guide>.steps{position:sticky;top:0;z-index:4;background:var(--bg);padding:8px 0;border-bottom:1px solid var(--line)}
+  .guide .steps ol{display:flex;overflow-x:auto;scrollbar-width:thin;gap:6px}
+  .guide .steps li{flex:none}
+  .guide .steps a{flex-direction:row;font-size:12px;padding:6px 8px;white-space:nowrap}
+  .guide .steps li:not(.now) span{display:inline}
+  .guide-section>h2{font-size:28px}
+  .with-steps{grid-template-columns:minmax(0,1fr);gap:20px;padding-top:16px}
   .steps{position:static}
   .steps ol{grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:4px}
   .steps a{flex-direction:column;gap:4px;padding:6px 2px;text-align:center;font-size:12px;line-height:1.3}

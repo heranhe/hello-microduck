@@ -1,0 +1,11 @@
+{
+  "name": "hello-microduck",
+  "private": true,
+  "scripts": {
+    "build": "python3 build.py",
+    "deploy": "npm run build && wrangler pages deploy --project-name hello-microduck --branch main"
+  },
+  "devDependencies": {
+    "wrangler": "4.157.0"
+  }
+}

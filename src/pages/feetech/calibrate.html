@@ -8,18 +8,20 @@
   <p>调试工具目前用的是模拟数据，可以先熟悉流程，但还不会连接或控制真实的 MicroDuck。接实机的版本做好后会更新。</p>
 </div>
 
-<h2>工具里的六步</h2>
+<h2>工具里的七步</h2>
 <ol class="road">
   <li><div><b>连接</b><span>填 MicroDuck 的地址，连上主控。</span></div></li>
   <li><div><b>检查</b><span>15 颗舵机全部正常在线。哪颗有问题，会直接告诉你 ID。</span></div></li>
   <li><div><b>摆零位</b><span>照屏幕把腿和头摆正，一次设一条腿，也可以一颗一颗设。</span></div></li>
   <li><div><b>姿态传感器</b><span>扶正、前倾、左倾，各停一下。</span></div></li>
-  <li><div><b>试站</b><span>让它慢慢站起来，对照屏幕看姿势对不对。</span></div></li>
+  <li><div><b>摄像头 / ToF（可选）</b><span>同一页确认画面和距离变化，可以单独跳过某一项，也可以直接跳过未检查项。</span></div></li>
+  <li><div><b>试站</b><span>让它慢慢站起来，对照屏幕看姿势。局部有偏差，可以只重标一颗，或小幅微调、试用后再保存。</span></div></li>
   <li><div><b>手柄</b><span>连上手柄，学几个常用按键。</span></div></li>
 </ol>
 
-<h2>顺便检查摄像头和 ToF</h2>
-<p>工具顶栏的“传感器”随时能点开，看摄像头画面和 ToF 距离。这个检查不动舵机，也不影响标定进度。</p>
+<h2>试站后只修正有偏差的关节</h2>
+<p>在“有偏差，调整”中选择关节。微调支持 0.1° 和 0.5° 步长，先试用，效果合适再保存；修改后重新试站确认。明显摆错或拆装过，就重标那颗关节，其他关节的结果会保留。</p>
+<p>摄像头和 ToF 已放进第 5 步；跳过结果会保留在完成页，之后可以补做。</p>
 
 <h2>做完以后</h2>
 <p>想让 MicroDuck 学会自己的动作，可以用作者的训练实验室：<a href="https://github.com/heranhe/microduck-lab-cloud" target="_blank" rel="noopener">heranhe/microduck-lab-cloud ↗</a></p>
