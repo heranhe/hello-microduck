@@ -1,0 +1,45 @@
+<h1>写入系统、通电</h1>
+<p class="lead">把系统写进 TF 卡，插到主板上，再从正确的 C 口接电。</p>
+
+<div class="need">
+  <h2>这一步要用到</h2>
+  <ul>
+    <li>32GB TF 卡和读卡器</li>
+    <li>一台电脑</li>
+    <li>Armbian Imager（写卡工具）</li>
+    <li>一根能传数据的 USB-C 线</li>
+  </ul>
+</div>
+
+<h2>1. 一键写入系统</h2>
+<div class="note todo">
+  <b>系统镜像：作者补充中</b>
+  <p>适配这套硬件的系统镜像和下载地址还在整理，补上后会更新这里。</p>
+</div>
+<ol class="how">
+  <li>TF 卡插到读卡器上，读卡器插到电脑上。</li>
+  <li>打开 Armbian Imager，选下载好的系统镜像文件。压缩包不用解压，直接选。</li>
+  <li>选你的 TF 卡。<b>看清楚盘符，选错会把别的盘清空。</b></li>
+  <li>点写入，等它写完并校验通过，再拔卡。</li>
+</ol>
+
+<h2>2. TF 卡插到主板</h2>
+<p>卡槽在主板背面。卡的<b>金属触点朝向电路板，印字的一面朝外</b>，推到底。</p>
+<figure>
+  <a href="../assets/img/tf-card-insert.webp" target="_blank" rel="noopener"><img src="../assets/img/tf-card-insert.webp" width="1050" height="1400" loading="lazy" alt="ZERO 3W 主板背面，TF 卡印字朝外插在右侧卡槽里"></a>
+  <figcaption><b>图 8</b>TF 卡印字朝外，插在主板背面的卡槽里。</figcaption>
+</figure>
+
+<h2>3. 接电：用靠近 TF 卡的那个 C 口</h2>
+<p>主板上有两个 USB-C 口。<b>靠近 TF 卡、板上印着 <code>USB_OTG</code> 和 <code>5V IN</code> 的那个</b>，才是供电和调试接口。另一个印着 <code>USB3</code> 的不用来供电。</p>
+<div class="note warn">
+  <b>线要能传数据</b>
+  <p>调试要用到数据，只能充电的线连不上电脑。</p>
+</div>
+
+<h2>4. 第一次开机</h2>
+<ul class="how">
+  <li>第一次开机比较慢，等一两分钟。</li>
+  <li>连 Wi-Fi 的方法以系统镜像的说明为准。</li>
+  <li>如果要用无线手柄，让 MicroDuck 连 5 GHz 的 Wi-Fi。2.4 GHz 可能和手柄互相干扰，出现断网。这个经验来自 <a href="https://github.com/kissqy/Microduck-kissqy/blob/main/docs/MICRODUCK-FAQ.md" target="_blank" rel="noopener">kissqy 的飞特版常见问题</a>。</li>
+</ul>

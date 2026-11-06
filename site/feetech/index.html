@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>飞特 HD-1910 方案 · hello-microduck</title>
+<meta name="description" content="手把手做一只 MicroDuck：材料、接线、写系统、标定，一步一步来。非官方教程。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Noto+Sans+SC:wght@400;500;700;900&display=swap">
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="../">hello-microduck</a>
+  <nav class="topnav" aria-label="网站导航">
+    <a href="../feetech/">飞特方案</a>
+    <a href="../xl330/">XL330 方案</a>
+    <a href="../tool/">调试工具</a>
+    <a href="https://github.com/heranhe/hello-microduck" target="_blank" rel="noopener">GitHub ↗</a>
+  </nav>
+</header>
+<main class="content wide"><p class="eyebrow">飞特 HD-1910 方案</p>
+<h1>用飞特舵机做一只 MicroDuck</h1>
+<p class="lead">一共五步。按顺序做，每一步做完再进下一步。</p>
+
+<ol class="road">
+  <li><div><b><a href="materials.html">准备材料和打印</a></b><span>采购清单、打印外壳。</span></div></li>
+  <li><div><b><a href="servo-id.html">给舵机设 ID</a></b><span>15 颗舵机各设一个编号，顺便转到中位。</span></div></li>
+  <li><div><b><a href="boards.html">主板、HAT 和接线</a></b><span>摄像头排线、焊 ToF、舵机线序，最后装舵机。</span></div></li>
+  <li><div><b><a href="system.html">写入系统、通电</a></b><span>一键写 TF 卡、插卡方向、哪个 C 口供电。</span></div></li>
+  <li><div><b><a href="calibrate.html">用调试工具标定</a></b><span>系统写好以后，用调试工具一步一步标定。</span></div></li>
+</ol>
+
+<div class="note warn">
+  <b>先读这一条</b>
+  <p>这个方案换了舵机，接线和官方原版不一样。特别是舵机线和 HAT 板的线序正好相反，第 3 步会讲清楚。不确定的地方，先停下来对照照片。</p>
+</div>
+
+<p><a class="btn main" href="materials.html">开始第 1 步 →</a></p>
+</main>
+<footer class="foot">
+  <p><b>非官方教程。</b>与 MicroDuck 官方团队 Pollen Robotics 无关，没有得到官方授权或认可。MicroDuck 是 Pollen Robotics 的开源项目。</p>
+  <p>照片和接线图来自作者的实际装配。<a href="https://github.com/heranhe/hello-microduck" target="_blank" rel="noopener">在 GitHub 上查看或修改这个教程 ↗</a></p>
+</footer>
+</body>
+</html>

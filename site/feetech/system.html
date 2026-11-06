@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>第 4 步：写入系统、通电 · hello-microduck</title>
+<meta name="description" content="手把手做一只 MicroDuck：材料、接线、写系统、标定，一步一步来。非官方教程。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Noto+Sans+SC:wght@400;500;700;900&display=swap">
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="../">hello-microduck</a>
+  <nav class="topnav" aria-label="网站导航">
+    <a href="../feetech/">飞特方案</a>
+    <a href="../xl330/">XL330 方案</a>
+    <a href="../tool/">调试工具</a>
+    <a href="https://github.com/heranhe/hello-microduck" target="_blank" rel="noopener">GitHub ↗</a>
+  </nav>
+</header>
+<div class="with-steps"><nav class="steps" aria-label="飞特方案的步骤"><ol><li class="done"><a href="../feetech/materials.html"><b>1</b><span>准备材料和打印</span></a></li><li class="done"><a href="../feetech/servo-id.html"><b>2</b><span>给舵机设 ID</span></a></li><li class="done"><a href="../feetech/boards.html"><b>3</b><span>主板、HAT 和接线</span></a></li><li class="now"><a href="../feetech/system.html" aria-current="step"><b>4</b><span>写入系统、通电</span></a></li><li class=""><a href="../feetech/calibrate.html"><b>5</b><span>用调试工具标定</span></a></li></ol></nav><main class="content"><p class="eyebrow">飞特 HD-1910 · 第 4 步，共 5 步</p><h1>写入系统、通电</h1>
+<p class="lead">把系统写进 TF 卡，插到主板上，再从正确的 C 口接电。</p>
+
+<div class="need">
+  <h2>这一步要用到</h2>
+  <ul>
+    <li>32GB TF 卡和读卡器</li>
+    <li>一台电脑</li>
+    <li>Armbian Imager（写卡工具）</li>
+    <li>一根能传数据的 USB-C 线</li>
+  </ul>
+</div>
+
+<h2>1. 一键写入系统</h2>
+<div class="note todo">
+  <b>系统镜像：作者补充中</b>
+  <p>适配这套硬件的系统镜像和下载地址还在整理，补上后会更新这里。</p>
+</div>
+<ol class="how">
+  <li>TF 卡插到读卡器上，读卡器插到电脑上。</li>
+  <li>打开 Armbian Imager，选下载好的系统镜像文件。压缩包不用解压，直接选。</li>
+  <li>选你的 TF 卡。<b>看清楚盘符，选错会把别的盘清空。</b></li>
+  <li>点写入，等它写完并校验通过，再拔卡。</li>
+</ol>
+
+<h2>2. TF 卡插到主板</h2>
+<p>卡槽在主板背面。卡的<b>金属触点朝向电路板，印字的一面朝外</b>，推到底。</p>
+<figure>
+  <a href="../assets/img/tf-card-insert.webp" target="_blank" rel="noopener"><img src="../assets/img/tf-card-insert.webp" width="1050" height="1400" loading="lazy" alt="ZERO 3W 主板背面，TF 卡印字朝外插在右侧卡槽里"></a>
+  <figcaption><b>图 8</b>TF 卡印字朝外，插在主板背面的卡槽里。</figcaption>
+</figure>
+
+<h2>3. 接电：用靠近 TF 卡的那个 C 口</h2>
+<p>主板上有两个 USB-C 口。<b>靠近 TF 卡、板上印着 <code>USB_OTG</code> 和 <code>5V IN</code> 的那个</b>，才是供电和调试接口。另一个印着 <code>USB3</code> 的不用来供电。</p>
+<div class="note warn">
+  <b>线要能传数据</b>
+  <p>调试要用到数据，只能充电的线连不上电脑。</p>
+</div>
+
+<h2>4. 第一次开机</h2>
+<ul class="how">
+  <li>第一次开机比较慢，等一两分钟。</li>
+  <li>连 Wi-Fi 的方法以系统镜像的说明为准。</li>
+  <li>如果要用无线手柄，让 MicroDuck 连 5 GHz 的 Wi-Fi。2.4 GHz 可能和手柄互相干扰，出现断网。这个经验来自 <a href="https://github.com/kissqy/Microduck-kissqy/blob/main/docs/MICRODUCK-FAQ.md" target="_blank" rel="noopener">kissqy 的飞特版常见问题</a>。</li>
+</ul>
+<div class="pager"><a class="btn" href="../feetech/boards.html">← 上一步：主板、HAT 和接线</a><a class="btn main" href="../feetech/calibrate.html">下一步：用调试工具标定 →</a></div></main></div>
+<footer class="foot">
+  <p><b>非官方教程。</b>与 MicroDuck 官方团队 Pollen Robotics 无关，没有得到官方授权或认可。MicroDuck 是 Pollen Robotics 的开源项目。</p>
+  <p>照片和接线图来自作者的实际装配。<a href="https://github.com/heranhe/hello-microduck" target="_blank" rel="noopener">在 GitHub 上查看或修改这个教程 ↗</a></p>
+</footer>
+</body>
+</html>
