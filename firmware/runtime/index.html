@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hello MicroDuck · 摄像头标定</title>
+<style>
+:root{font:16px/1.7 system-ui,sans-serif;color:#222;background:#f7f6f2}body{max-width:660px;margin:7vh auto;padding:24px}h1{font-size:32px;letter-spacing:-1px;margin:8px 0}small{color:#68665e}form{background:#fff;padding:28px;border:1px solid #dedbd2;border-radius:16px;margin:24px 0}label{display:block;margin:18px 0}input,select,button{font:inherit;border:1px solid #bbb8af;border-radius:7px;padding:8px 12px}input[type=number]{width:100px}button{background:#f4c749;cursor:pointer;font-weight:600}button:disabled{opacity:.5;cursor:wait}#status{white-space:pre-wrap;color:#515049}a{color:#645014}.note{font-size:14px;color:#68665e}
+</style>
+<small>HELLO MICRODUCK / CAMERA</small><h1>把鸭子的视野摆正。</h1>
+<p>校正实际画面，保存到主板。视频、截图和后续图像处理会使用同一份标定，重启后继续生效。</p>
+<form id="form">
+<label>画面方向 <select id="rotation"><option value="0">0°</option><option value="90">顺时针 90°</option><option value="180">180°</option><option value="270">顺时针 270°</option></select></label>
+<label>角度细调 <input id="fine" type="number" min="-45" max="45" step="0.1" value="0" required> °</label>
+<label><input type="checkbox" id="horizontal"> 左右镜像</label>
+<label><input type="checkbox" id="vertical"> 上下镜像</label>
+<p class="note">先调整方向，再镜像，最后细调角度。细调保持画幅尺寸，边缘可能出现黑边或裁切。保存会重启摄像头服务，请重新连接视频。</p>
+<button id="save" type="submit" disabled>保存并应用</button>
+</form>
+<p id="status" role="status">正在读取主板标定…</p>
+<p class="note">视频在原中控中查看，预览旋转应选 0°。像素变换会增加主板负载，建议先以 360p / 15 fps 验证温度与帧率；如用于视觉定位，需按新画面重新标定相机内参。</p>
+<script>
+const $=id=>document.getElementById(id);let loaded=false;
+function fill(c){$('rotation').value=c.rotation;$('fine').value=c.fine_degrees;$('horizontal').checked=c.mirror_horizontal;$('vertical').checked=c.mirror_vertical}
+async function request(options){const r=await fetch('/api/calibration',options);const c=await r.json();if(!r.ok)throw Error(c.error||'请求失败');return c}
+request().then(c=>{fill(c);loaded=true;$('save').disabled=false;$('status').textContent='已读取主板保存的标定。'}).catch(e=>$('status').textContent=e.message);
+$('form').onsubmit=async e=>{e.preventDefault();if(!loaded)return;$('save').disabled=true;$('status').textContent='正在保存并重启摄像头…';try{const c=await request({method:'POST',headers:{'Content-Type':'application/json','X-Hello-Token':'__TOKEN__'},body:JSON.stringify({rotation:Number($('rotation').value),fine_degrees:Number($('fine').value),mirror_horizontal:$('horizontal').checked,mirror_vertical:$('vertical').checked})});fill(c);$('status').textContent='标定已保存并应用。请重新连接视频，检查实际画面。'}catch(e){$('status').textContent=e.message}finally{$('save').disabled=false}};
+</script></html>
