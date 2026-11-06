@@ -1,6 +1,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>MicroDuck 标定向导</title>
+<title>MicroDuck 标定流程演示</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Noto+Sans+SC:wght@400;500;700;900&display=swap">
@@ -276,8 +276,9 @@ a.btn{display:flex;align-items:center;justify-content:center;text-align:center;t
 .schip.bad{color:var(--bad);border-color:var(--bad)}
 .shead{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .mini.sback{width:64px;min-height:32px;flex:none}
-.camrow{display:grid;grid-template-columns:96px minmax(0,1fr);gap:12px}
-#camCanvas{display:block;width:100%;aspect-ratio:9/16;background:var(--surface)}
+.camrow{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
+#camCanvas{display:block;width:100%;aspect-ratio:16/9;background:var(--surface)}
+.camside .stack{grid-template-columns:1fr 1fr;gap:8px}
 .camside{display:grid;gap:8px;align-content:start;min-width:0}
 .camside p{margin:0}
 .mini.wide{width:100%;min-height:32px}
@@ -372,7 +373,7 @@ ul.plain li.go::before{content:"…";color:var(--act)}
 
 <div id="app">
   <header>
-    <div class="brandbox"><div class="brandrow"><b>MicroDuck 标定</b><button class="unoff" data-a="about" title="这是非官方工具，点开看说明">非官方</button></div>
+    <div class="brandbox"><div class="brandrow"><b>MicroDuck 标定 · 演示</b><button class="unoff" data-a="about" title="这是非官方演示，点开看说明">非官方</button></div>
       <div class="ghrow"><span>训练个性化动作</span><a class="ghbtn" href="https://github.com/heranhe/microduck-lab-cloud" target="_blank" rel="noopener" title="打开我的训练实验室：训练、世界模拟、动作编辑和云端 GPU">GitHub ↗</a></div></div>
     <ol id="rail" aria-label="标定进度"></ol>
     <div class="hr"><span id="link"></span><button class="link" data-a="adv">高级模式</button></div>
@@ -886,8 +887,8 @@ function sensorPage(){
   const cam=c==='wait'?html`<p class="hint">正在连接摄像头…</p>`
     :c==='norun'?html`<div class="note bad"><strong>摄像头服务没有启动</strong>重启 MicroDuck 再试一次。这不影响走路。</div>${retry('camera')}`
     :c==='noframe'?html`<div class="note bad"><strong>服务正常，但摄像头没有画面</strong>关机后检查摄像头排线有没有插好。</div>${retry('camera')}`
-    :html`<div class="camrow"><canvas id="camCanvas" width="270" height="480" aria-label="摄像头画面（模拟）"></canvas><div class="camside">
-       <p class="small">1280×720 · 安装角度 90°</p><p class="hint">画面清楚吗？上下方向对吗？</p>
+    :html`<div class="camrow"><canvas id="camCanvas" width="640" height="360" aria-label="摄像头画面（模拟）"></canvas><div class="camside">
+       <p class="small">1280×720</p><p class="hint">画面清楚吗？上下方向对吗？</p>
        ${G.camOk?html`<p class="sok">✓ 已确认画面正常</p><button class="link" data-a="camBad">重新检查画面</button>`:html`<div class="stack"><button class="mini wide" data-a="camOk">画面正常</button><button class="mini wide" data-a="camBad">有问题</button></div>`}
        </div></div>${G.camIssue&&!G.camOk?html`<ul class="tips"><li>模糊或发黑：擦一下镜头，看有没有东西挡住。</li><li>花屏或断断续续：关机后检查排线。</li><li>方向不对：摄像头的安装角度设置不对。</li></ul>`:''}`;
   const tof=o==='wait'?html`<p class="hint">等待第一帧…</p>`
@@ -908,13 +909,14 @@ function sensorPage(){
 }
 function drawCam(now){
   const cv=$('camCanvas');if(!cv)return;
-  const x=cv.getContext('2d'),W=cv.width,H=cv.height,g=x.createLinearGradient(0,0,0,H),s=Math.sin(now/1600);
-  g.addColorStop(0,'#5b6470');g.addColorStop(.62,'#3a4048');g.addColorStop(.62,'#2a2622');g.addColorStop(1,'#15130f');
+  const x=cv.getContext('2d'),W=cv.width,H=cv.height,g=x.createLinearGradient(0,0,0,H),s=Math.sin(now/1600),hz=H*.55;
+  g.addColorStop(0,'#5b6470');g.addColorStop(.55,'#3a4048');g.addColorStop(.55,'#2a2622');g.addColorStop(1,'#15130f');
   x.fillStyle=g;x.fillRect(0,0,W,H);
-  x.fillStyle='#d9c9a8';x.fillRect(48+s*6,120,110,150);x.fillStyle='#8a6d3b';x.fillRect(48+s*6,270,110,14);
-  x.fillStyle='#ff7a2f';x.beginPath();x.arc(205+s*10,330,26,0,7);x.fill();
-  x.strokeStyle='rgba(255,255,255,.14)';x.lineWidth=2;for(let i=-3;i<=3;i++){x.beginPath();x.moveTo(W/2+i*18,298);x.lineTo(W/2+i*90,H);x.stroke()}
-  x.fillStyle='rgba(8,8,12,.6)';x.fillRect(0,H-44,W,44);x.fillStyle='#faf8f2';x.font='24px sans-serif';x.textAlign='center';x.fillText('模拟画面',W/2,H-14);
+  const bw=W*.13,bh=H*.4,bx=W*.3+s*W*.012,by=hz-bh;
+  x.fillStyle='#d9c9a8';x.fillRect(bx,by,bw,bh);x.fillStyle='#8a6d3b';x.fillRect(bx,hz,bw,H*.04);
+  x.fillStyle='#ff7a2f';x.beginPath();x.arc(W*.68+s*W*.02,hz+H*.22,H*.07,0,7);x.fill();
+  x.strokeStyle='rgba(255,255,255,.14)';x.lineWidth=2;for(let i=-4;i<=4;i++){x.beginPath();x.moveTo(W/2+i*W*.03,hz);x.lineTo(W/2+i*W*.16,H);x.stroke()}
+  x.fillStyle='rgba(8,8,12,.6)';x.fillRect(0,H-34,W,34);x.fillStyle='#faf8f2';x.font='20px sans-serif';x.textAlign='center';x.fillText('模拟画面',W/2,H-11);
 }
 function tickTof(now){
   const cells=document.querySelectorAll('.tz');if(!cells.length)return;
@@ -949,11 +951,11 @@ function panelBody(){
     const C=S.conn,ST=['找到 MicroDuck','登录主控','读取固件版本'];
     if(C.up&&C.sub!=='busy')return html`<h1>已连接</h1><p class="say">${C.addr}</p><ul class="plain"><li>MicroDuck 主控在线</li></ul><div class="spring"></div><button class="btn main" data-a="advance" data-primary>继续</button>${foot(html`<button class="link" data-a="reconnect">换一台或重新连接</button>`)}${aboutNote}`;
     if(C.sub==='busy')return html`<h1>正在连接</h1><ul class="plain">${ST.map((s,i)=>html`<li class="${i<C.stage?'':i===C.stage?'go':'wait'}">${s}</li>`)}</ul><div class="spring"></div>`;
-    return html`<h1>连接 MicroDuck</h1><p class="say">打开 MicroDuck 电源，让电脑和它连到同一个 Wi-Fi。</p>
+    return html`<h1>预览连接流程</h1><div class="note warn"><strong>当前为演示，不连接真机</strong>无需机器人，请勿填写真实 SSH 密码。真实调试请下载本机后台，在 127.0.0.1:8098 使用独立界面。<a href="../feetech/#local-debug">下载后台与查看部署说明 ↗</a></div><p class="say">保留示例地址，点击下方按钮体验模拟连接。</p>
     ${C.err?html`<div class="note bad"><strong>${C.err[0]}</strong>${C.err[1]}</div>`:''}
     <div class="field"><label for="sshAddr">SSH 地址（用户名@MicroDuck 的 IP）</label><input id="sshAddr" value="${C.addr}" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
-    <div class="field"><label for="sshPass">SSH 密码（配置过免密可以留空）</label><input id="sshPass" type="password" autocomplete="off"></div>
-    <div class="spring"></div><button class="btn main" data-a="connect" data-primary>连接</button>${aboutNote}`;
+    <div class="field"><label for="sshPass">演示密码（留空，不填真实密码）</label><input id="sshPass" type="password" autocomplete="off"></div>
+    <div class="spring"></div><button class="btn main" data-a="connect" data-primary>模拟连接</button>${aboutNote}`;
   }
   if(S.step==='check'){
     const n=S.scan,head='';
@@ -1027,8 +1029,8 @@ function panelBody(){
     <div class="spring"></div><button class="btn main" data-a="padDone" data-primary>完成</button>${foot()}`;
   }
   return html`<h1>全部完成</h1><ul class="plain"><li>15 颗舵机的零位都已设好</li><li>姿态传感器已校准，方向正确</li><li>站立姿势已确认</li>${S.pad.skipped?html`<li class="wait">手柄还没连，可以稍后再连</li>`:html`<li>手柄已连接</li>`}</ul><p class="say">换舵机或拆装后，再标定一次就好。</p><section class="scard"><h2>可选检查</h2>${['camera','tof'].map(k=>html`<div class="result-row"><span>${NAME[k]} <b class="${isDone(k)?'sok':''}">${isDone(k)?'已检查':isSkipped(k)?'已跳过':'待检查'}</b></span><button class="mini" data-a="reviewSensor" data-k="${k}">${isDone(k)?'复查':'补做'}</button></div>`)}</section><button class="btn" data-a="reviewRepair">复查关节与微调</button><p class="hint">当前为演示，标定和微调只在本次页面内保留，尚未写入真实机器人。</p>
-  <div class="train"><h2>接下来：训练个性化动作</h2><p class="hint">标定好之后，可以用我的训练实验室训练你自己的个性化动作，还能做世界模拟、编辑动作、用云端 GPU 训练。</p>
-    <a class="btn main" href="https://github.com/heranhe/microduck-lab-cloud" target="_blank" rel="noopener">在 GitHub 打开训练实验室 ↗</a>
+  <div class="train"><h2>接下来：部署训练实验室</h2><p class="hint">在自己的电脑上安装并启动实验室后，Mac M 系列可用 CPU 训练支持的动作，无需 Google 登录；也可用自己的 Google 账号尝试 Colab 免费云算力。免费 GPU 与时长由 Google 动态分配，不保证可用，也不是固定免费额度。</p>
+    <a class="btn main" href="https://github.com/heranhe/microduck-lab-cloud#quick-start" target="_blank" rel="noopener">查看实验室安装说明 ↗</a>
     <p class="small">仓库：heranhe/microduck-lab-cloud。飞特 HD-1910 和官方 XL330 的仿真控制参数不同，训练时要用对应的舵机参数。</p></div><div class="spring"></div><button class="btn main" data-a="${S.pad.skipped?'padBack':'keys'}" data-primary>${S.pad.skipped?'现在连接手柄':'查看按键表'}</button>${foot(html`<button class="link" data-a="restart">重新标定</button>`)}${aboutNote}`;
 }
 let lastStep=null;

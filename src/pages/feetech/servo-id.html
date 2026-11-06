@@ -7,10 +7,21 @@
     <li>15 颗 HD-1910 舵机（备用的 2 颗也可以一起设）</li>
     <li>灵影 TTL Adapter(A) 调试板</li>
     <li>5264-3P 转 AMP2.0 反向调试线 1 根</li>
-    <li>一台 Windows 电脑，装好飞特的舵机调试软件</li>
+    <li>一台 Windows 电脑，安装本仓库提供的飞特 FD 软件</li>
     <li>贴纸和笔，用来给舵机写编号</li>
   </ul>
 </div>
+
+<h2 id="fd-software">灵影调试板可以直接用飞特 FD</h2>
+<p><b>灵影 TTL Adapter(A) 可直接配合飞特 FD 软件设置舵机 ID。</b>下载并解压下面的官方软件包，运行其中的 <code>FD1985-250729/FD.exe</code>；软件适用于 Windows，本机 SSH 后台另行支持 Mac / Windows / Linux。</p>
+<p><a class="btn main" href="../downloads/FD1.9.8.5(250729).7z" download>下载飞特 FD 1.9.8.5 ↧</a> <a class="btn" href="https://gitee.com/ftservo/fddebug" target="_blank" rel="noopener">飞特官方软件仓库 ↗</a></p>
+<p>原始压缩包已收录在 <code>tools/feetech/</code>，保留 FTServo 的 MIT 许可和来源。完整校验信息及灵影操作步骤见 <a href="https://github.com/heranhe/hello-microduck/tree/main/tools/feetech" target="_blank" rel="noopener">仓库内的软件说明 ↗</a>。</p>
+<ol class="how">
+  <li>灵影板通过 USB 接电脑，确认设备管理器出现对应 COM 端口；没有端口时按板上芯片型号和灵影厂商说明安装驱动。</li>
+  <li>按适配器说明给舵机供电，用已核对线序的反向调试线接上<b>单颗</b>舵机。USB 插上不代表舵机电源已经供上，TTL 与 RS-485 不能混用。</li>
+  <li>FD 选择该 COM 端口，波特率设为 <code>1000000</code>，打开并搜索；找到舵机后先停止搜索，再改 ID、写入保存。</li>
+  <li>断电重启，按新 ID 搜索并确认反馈；舵机未装入骨架且舵盘可自由运动时，再低速移到 <code>2048</code>。确认后贴编号，拔下换下一颗。</li>
+</ol>
 
 <h2 id="servo-map">每颗舵机的编号</h2>
 <p><b>下面的编号表和接线总图统一按后视方向排布：鸭子背对你，你和鸭子看向同一方向。</b>左边是鸭子的左腿（20–24），右边是鸭子的右腿（10–14）。</p>

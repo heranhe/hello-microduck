@@ -119,6 +119,8 @@ ol.road b{display:block}
 ol.road span{color:var(--muted);font-size:15px}
 code{font-family:var(--mono);font-size:.92em;background:var(--panel);border:1px solid var(--line);padding:1px 5px}
 .guide code{overflow-wrap:anywhere}
+pre{max-width:100%;overflow-x:auto;background:var(--panel);border:1px solid var(--line);padding:16px;font:14px/1.7 var(--mono)}
+pre code{padding:0;border:0;background:none;font-size:inherit;overflow-wrap:normal!important}
 
 .foot{border-top:1px solid var(--line);color:var(--muted);font-size:14px;
   padding-block:24px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}

@@ -7,7 +7,9 @@
 
 [**打开在线教程 →**](https://hello-microduck.pages.dev) ·
 [飞特 HD-1910 方案](https://hello-microduck.pages.dev/feetech/) ·
-[在线调试工具](https://hello-microduck.pages.dev/tool/)
+[调试工具本机部署说明](https://hello-microduck.pages.dev/feetech/#local-debug)
+
+[**下载本机调试包（含后台与飞特 FD）↧**](https://hello-microduck.pages.dev/downloads/hello-microduck-local.zip)
 
 <img src="docs/img/tool-connect.webp" alt="MicroDuck 标定工具：左边是 3D 模型，右边是连接步骤" width="820">
 
@@ -79,6 +81,8 @@
 15 颗舵机接在同一根线上，主板靠编号（ID）区分它们。新舵机出厂是同一个编号，所以**装之前要一颗一颗改好**。
 
 **怎么设**
+
+先解压仓库 [tools/feetech/](tools/feetech/README.md) 中的官方 `FD1.9.8.5(250729).7z`，Windows 运行其中 `FD1985-250729/FD.exe`。**灵影 TTL Adapter(A) 可直接配合这个软件使用**：先确认 COM 口和舵机供电，再按下面步骤逐颗改 ID。Mac / Linux 的本机 SSH 后台与 FD 是不同程序，FD 的 Windows 软件包不能直接当作 macOS 应用运行。
 
 1. **一次只接一颗舵机**，两颗同时接编号一样，软件分不清。
 2. 调试板接电脑 USB，舵机用反向调试线接到调试板上。
@@ -212,7 +216,26 @@ SH1.0 那头插到 **J5**，1 号脚在靠近 J6 的一侧。
 
 ### 第 5 步：用调试工具标定
 
-系统写好、通上电以后，用[调试工具](https://hello-microduck.pages.dev/tool/)一步一步标定。每个舵机装得都有一点不一样，标定就是告诉 MicroDuck 它的“正中间”在哪。
+实机标定需要先在自己的电脑上安装、启动与机器人固件匹配的调试服务，再打开本机地址，由本地服务连接 MicroDuck。每个舵机装得都有一点不一样，标定就是告诉它各关节的“正中间”在哪。
+
+**本仓库已提供真实本机后台与独立界面**，位于 [backend/](backend/README.md)。支持 SSH、总线/IMU 原始反馈、单关节标定写入、IMU 安装确认、卸力及拆下舵盘后的单颗回中位；不包含机器人固件，不自动切换服务，也不提供行走策略启用。
+
+**下载部署：**完整解压[本机调试包](https://hello-microduck.pages.dev/downloads/hello-microduck-local.zip)，安装 Python 3.9+。macOS 双击 `start.command`（或执行 `bash start.command`），Windows 双击 `start.cmd`（需 Python Launcher），Linux 执行 `bash start.command`。首次启动联网安装 Paramiko，随后打开 <http://127.0.0.1:8098/>。
+
+机器人需已有支持 `robot.busStatus` / `robot.busCommand` 的飞特版 robotd，默认 socket `/run/robotd.sock`；标定写入要求机器人处于 `commissioning` 模式，按固件说明准备。首次 SSH 连接需核对主机指纹；密码不保存。**本次完成协议夹具与自动测试，尚未进行真实机器人验收**，先核对固件和只读反馈再操作。摄像头、ToF、手柄与行走尚未接入本后台。
+
+[在线七步预览](https://hello-microduck.pages.dev/tool/)仍是独立的模拟演示，不连接后台、不写入机器人；演示页面不要填写真实 SSH 密码。
+
+**在本机预览演示：**
+
+```bash
+git clone https://github.com/heranhe/hello-microduck.git
+cd hello-microduck
+python3 build.py
+python3 -m http.server 8000 --bind 127.0.0.1 --directory site
+```
+
+在运行命令的电脑打开 <http://127.0.0.1:8000/tool/>；这是本地演示服务，仍不能调试实机。终端按 `Ctrl+C` 停止。实机版本发布后，会补充对应安装包与启动说明。
 
 <table>
 <tr>
@@ -235,7 +258,12 @@ SH1.0 那头插到 **J5**，1 号脚在靠近 J6 的一侧。
 
 > **现在是演示版：**调试工具用模拟数据，可以先熟悉流程，还不会连接或控制真实的 MicroDuck。标定和修正只在本次页面会话中保留，刷新后重置。
 
-标定完想让 MicroDuck 学会自己的动作，可以用作者的训练实验室：[heranhe/microduck-lab-cloud](https://github.com/heranhe/microduck-lab-cloud)。
+**训练实验室也需要先在本机安装、启动**，见 [microduck-lab-cloud 快速开始](https://github.com/heranhe/microduck-lab-cloud#quick-start)。
+
+- **Mac M 系列 CPU 本地训练：**Apple Silicon Mac 可直接用 CPU 训练支持的动作，无需独立 NVIDIA 显卡，也无需 Google 登录。打开本地实验室，在“训练”里选动作并点击“CPU 训练”。
+- **Google Colab 云算力：**使用自己的 Google 账号，可尝试免费层提供的云算力，包括可用时的 T4 GPU。按项目说明选择兼容任务，也可在 [Colab 网页打开训练 Notebook](https://colab.research.google.com/github/heranhe/microduck-lab-cloud/blob/main/notebooks/microduck_train.ipynb)。免费资源和时长由 Google 动态分配，不保证可用，也没有固定免费小时数，详见 [Colab 官方 FAQ](https://research.google.com/colaboratory/faq.html)。
+
+本地与云端的可用任务不同，以实验室动作列表为准；飞特 HD-1910 和官方 XL330 需要对应的仿真与控制参数。
 
 ### 调试工具功能说明
 
@@ -243,7 +271,7 @@ SH1.0 那头插到 **J5**，1 号脚在靠近 J6 的一侧。
 
 #### 1–3　连接、检查、摆零位
 
-- **连接：**填 MicroDuck 的 SSH 地址（默认 `radxa@microduck.local`），免密配置过的话密码可以留空。
+- **连接演示：**保留示例地址 `radxa@microduck.local`，密码留空，点击“模拟连接”。当前不发送 SSH 请求；真实连接需要实机版本的本地服务。
 - **检查：**读 15 颗舵机的编号和当前位置。全部在线显示“舵机全部正常在线”，有异常会直接点名是哪个 ID。点模型上的舵机或编号，可以单独高亮查看，其余变成半透明。
 - **摆零位：**按屏幕上的样子把左腿、右腿、头摆正，再点“设为零位”。可以整个部位一起设，也可以展开后一颗一颗设。如果某颗舵机在装配时被转过头、超出这个关节的范围，会提示你拆下来转回 `2048` 再装回去。
 
@@ -255,9 +283,9 @@ SH1.0 那头插到 **J5**，1 号脚在靠近 J6 的一侧。
 
 #### 5　摄像头与 ToF（可选）
 
-<img src="docs/img/tool-sensors.webp" alt="摄像头与 ToF：左侧是 3D 模型，右侧是摄像头画面和 8×8 ToF 深度矩阵" width="720">
+<img src="docs/img/tool-sensors.webp" alt="摄像头与 ToF：右侧是横屏的摄像头画面、下方的确认按钮和 8×8 ToF 深度矩阵" width="720">
 
-- **摄像头：**看画面是否清楚、上下方向对不对，点“画面正常”或“有问题”。
+- **摄像头：**横屏 1280×720 的画面，下方是“画面正常”和“有问题”两个按钮；看画面是否清楚、上下方向对不对。
 - **ToF：**右侧是 8×8 的深度矩阵，颜色从暖到冷表示从近到远，`x` 表示没测出来。先确认前方无遮挡，再把手挡在嘴前面约 10 厘米，距离变近就说明接对了。
 - 两项分别记录，可以只通过一个、跳过另一个，也可以点“跳过未检查项，继续”。这一步不是试站的前提，跳过之后可以在完成页补做。
 
@@ -358,7 +386,7 @@ SH1.0 那头插到 **J5**，1 号脚在靠近 J6 的一侧。
 - [ ] HD-1910 版打印文件的下载地址和打印参数
 - [ ] 适配这套硬件的系统镜像和下载地址
 - [ ] 摄像头价格、轴承装机数量（按 CAD BOM 核对）
-- [ ] 调试工具接实机的版本
+- [ ] 本机调试后台的真实机器人验收；摄像头、ToF 与手柄接入
 - [ ] 官方 XL330 方案的教程
 
 ## 修改这个教程
@@ -383,6 +411,10 @@ hello-microduck/
 │   └── pages/            每一页的正文
 ├── tool/
 │   └── calibration.html  调试工具（单文件）
+├── backend/              真实 SSH 后台与本机界面
+├── tools/feetech/        官方 FD 软件原包、许可、灵影操作步骤
+├── start.command         macOS / Linux 启动器
+├── start.cmd             Windows 启动器
 ├── docs/                 设计说明和 README 配图
 └── site/                 生成好的网站，直接部署这个目录
     └── assets/img/       教程照片（已去掉位置等元数据）
@@ -402,6 +434,7 @@ npm run deploy
 - 调试工具里的 MicroDuck 3D 模型、关节范围、配色和地面网格算法来自 [pollen-robotics/microduck-simulator](https://huggingface.co/spaces/pollen-robotics/microduck-simulator) 和 [pollen-robotics/microduck](https://github.com/pollen-robotics/microduck)，Apache-2.0。
 - 调试工具里的手柄 3D 模型基于 “[Xbox Elite Controller](https://sketchfab.com/3d-models/xbox-elite-controller-32aad0ff25f7446b8afe649ea3cc9e43)”，作者 [Rusfort](https://sketchfab.com/Rusfort)，[CC-BY-4.0](http://creativecommons.org/licenses/by/4.0/)。已删除背部拨片和按键外层透明罩，去掉贴图和按键上的 logo。
 - 3D 渲染库 three.js（MIT）；字体 Anton 和 Noto Sans SC（SIL OFL）。
+- 飞特 FD 1.9.8.5 原始压缩包来自 [FTServo 官方仓库](https://gitee.com/ftservo/fddebug)，MIT，许可保留于 [tools/feetech/LICENSE](tools/feetech/LICENSE)。后台通过 Paramiko（LGPL-2.1）调用 SSH，依赖按各自许可使用。
 - 图 6 截自飞特 HD-1910-C001 产品规格书，图 7 截自 Robot HAT 的 PCB 工程。
 - “用 5 GHz Wi-Fi 避免和手柄干扰”的经验来自 [kissqy/Microduck-kissqy](https://github.com/kissqy/Microduck-kissqy)。
 - 文中出现的 MicroDuck、Xbox、飞特、GameSir 等名称归各自所有者，只用来说明兼容关系。
