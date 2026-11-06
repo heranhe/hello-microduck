@@ -20,6 +20,10 @@ python3 "$here/patch-image.py" /mnt/hello-image "$payload" "$source_dir"
 # Verify the shipped native executable against the image's actual dynamic libraries.
 GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0 chroot /mnt/hello-image \
     /usr/local/lib/hello-microduck/mediad --check-calibration
+printf '%s\n' '{"rotation":270,"fine_degrees":2.5,"mirror_horizontal":true,"mirror_vertical":true}' > /mnt/hello-image/tmp/hello-camera-check.json
+GST_PLUGIN_PATH=/usr/local/lib/gstreamer-1.0 chroot /mnt/hello-image \
+    /usr/local/lib/hello-microduck/mediad --check-calibration --calibration /tmp/hello-camera-check.json
+rm /mnt/hello-image/tmp/hello-camera-check.json
 python3 "$here/verify-image.py" /mnt/hello-image
 sync -f /mnt/hello-image
 umount /mnt/hello-image

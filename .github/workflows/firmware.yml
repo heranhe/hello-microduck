@@ -36,19 +36,18 @@ jobs:
           python3 -m unittest discover -s firmware/tests -v
           python3 -m unittest discover -s upstream/microduck-hd1910/firmware/scripts/tests -p test_repair_armbian_env.py -v
           cd upstream/microduck-hd1910/firmware
-          cargo +1.99.1 test --locked -p mediad hello_calibration_tests -- --nocapture
-          cargo +1.99.1 test --locked -p mediad calibration::tests
+          cargo +1.99.1 test --locked -p mediad --lib
           cargo +1.99.1 build --locked --release -p mediad
       - name: Build and verify flashable image
         env:
           HELLO_DEFAULT_PASSWORD_HASH: ${{ secrets.HELLO_DEFAULT_PASSWORD_HASH }}
+          HELLO_AP_PSK: ${{ secrets.HELLO_AP_PSK }}
         run: |
           mkdir -p assets payload
           curl --fail --location --retry 4 -o assets/microduck-zero3w-0.15.1-R1.img.xz https://github.com/kissqy/Microduck-kissqy/releases/download/public-image-r1/microduck-zero3w-0.15.1-R1.img.xz
           cp upstream/microduck-hd1910/firmware/target/release/mediad payload/
-          sudo --preserve-env=HELLO_DEFAULT_PASSWORD_HASH bash firmware/build-image.sh "$PWD/assets" "$PWD/upstream/microduck-hd1910/firmware" "$PWD/payload"
+          sudo --preserve-env=HELLO_DEFAULT_PASSWORD_HASH,HELLO_AP_PSK bash firmware/build-image.sh "$PWD/assets" "$PWD/upstream/microduck-hd1910/firmware" "$PWD/payload"
           cp firmware/README.md assets/output/README.md
-          git diff --no-index /dev/null firmware/runtime/calibration.rs > assets/output/hello-calibration-source.patch || test $? = 1
       - uses: actions/upload-artifact@v4
         with:
           name: hello-microduck-r1-preview

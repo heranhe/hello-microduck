@@ -27,6 +27,10 @@
 
 **现在是演示版**：用模拟数据，可以先熟悉流程，还不会连接或控制真实的 MicroDuck。
 
+## Hello 固件预览版
+
+[固件构建与使用说明](firmware/README.md)包含启动配置写入修复、统一默认密码，以及在主板上保存并应用的摄像头实际像素标定。[固件下载](https://github.com/heranhe/hello-microduck/releases)见 Release。新镜像仍需实机刷卡和反复重启验收。
+
 ## 还在补充
 
 - HD-1910 版打印文件的下载地址和打印参数

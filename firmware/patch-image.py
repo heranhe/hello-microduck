@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Install the Hello overlay into a mounted, checksum-pinned R1 image."""
 import hashlib
+import configparser
 import importlib.util
 import json
 import os
@@ -82,6 +83,16 @@ assert password_hash.startswith('$6$') and ':' not in password_hash
 subprocess.run(['chroot', str(root), 'chpasswd', '-e'],
                input='radxa:'+password_hash+'\n', text=True, check=True)
 subprocess.run(['chroot', str(root), 'chage', '-d', '20600', '-M', '99999', 'radxa'], check=True)
+profile_path = root/'etc/NetworkManager/system-connections/Microduck-Setup.nmconnection'
+profile = configparser.ConfigParser(interpolation=None)
+profile.read(profile_path)
+assert profile['wifi']['ssid'] == 'Microduck-kissqy'
+psk = os.environ['HELLO_AP_PSK'].strip()
+assert re.fullmatch(r'[0-9a-f]{64}', psk)
+profile['wifi-security']['psk'] = psk
+with profile_path.open('w') as out:
+    profile.write(out, space_around_delimiters=False)
+os.chmod(profile_path, 0o600)
 
 # Snapshot the verified board-specific boot files without rewriting their contents.
 backup = root/'var/lib/hello-microduck/boot-reference'
