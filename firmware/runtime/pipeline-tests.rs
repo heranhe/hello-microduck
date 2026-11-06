@@ -1,17 +1,19 @@
 #[cfg(test)]
 mod hello_calibration_tests {
     use super::*;
+    use gst_video::VideoFrameExt;
 
     // Exercise the exact element builder used before the production tee, with real pixels.
     fn pixels(rotation: Rotation, fine: f64, mirror: bool) -> (u32, u32, Vec<u8>) {
         gst::init().unwrap();
         let pipeline = gst::Pipeline::new();
         let src = gst_app::AppSrc::builder()
+            .format(gst::Format::Time)
             .caps(&gst::Caps::builder("video/x-raw")
                 .field("format", "UYVY").field("width", 4i32).field("height", 2i32)
                 .field("framerate", gst::Fraction::new(1, 1)).build()).build();
         let sink = gst_app::AppSink::builder().sync(false).build();
-        pipeline.add_many([src.upcast_ref(), sink.upcast_ref()]).unwrap();
+        pipeline.add_many([src.upcast_ref::<gst::Element>(), sink.upcast_ref::<gst::Element>()]).unwrap();
         let value = crate::calibration::Calibration {
             rotation: 0, fine_degrees: fine, mirror_horizontal: mirror, mirror_vertical: false,
         };

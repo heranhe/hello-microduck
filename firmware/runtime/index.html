@@ -15,7 +15,7 @@
 <button id="save" type="submit" disabled>保存并应用</button>
 </form>
 <p id="status" role="status">正在读取主板标定…</p>
-<p class="note">视频在原中控中查看，预览旋转应选 0°。像素变换会增加主板负载，建议先以 360p / 15 fps 验证温度与帧率；如用于视觉定位，需按新画面重新标定相机内参。</p>
+<p class="note">视频在原中控中查看，预览旋转应选 0°。像素变换会增加主板负载，本镜像默认使用 360p / 30 fps；请验证温度与实际帧率，如用于视觉定位，需按新画面重新标定相机内参。</p>
 <script>
 const $=id=>document.getElementById(id);let loaded=false;
 function fill(c){$('rotation').value=c.rotation;$('fine').value=c.fine_degrees;$('horizontal').checked=c.mirror_horizontal;$('vertical').checked=c.mirror_vertical}

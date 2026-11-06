@@ -108,7 +108,7 @@ fn calibration_elements(calibration: Option<&crate::calibration::Calibration>) -
             elements.push(gst::ElementFactory::make("videoconvert").build()?);
             elements.push(gst::ElementFactory::make("rotate")
                 .property("angle", c.fine_degrees.to_radians())
-                .property_from_str("off-edge-pixels", "black").build()?);
+                .property_from_str("off-edge-pixels", "ignore").build()?);
             elements.push(gst::ElementFactory::make("videoconvert").build()?);
             elements.push(gst::ElementFactory::make("capsfilter")
                 .property("caps", gst::Caps::builder("video/x-raw")

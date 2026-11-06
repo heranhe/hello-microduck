@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -57,6 +58,18 @@ install(source/'LICENSE', '/usr/local/lib/hello-microduck/licenses/Apache-2.0.tx
 for name in ('backend.py', 'index.html'):
     install(here/'runtime'/name, '/usr/local/lib/hello-microduck/'+name)
 install(here/'runtime/camera-calibration.json', '/etc/robot/camera-calibration.json')
+# Quarter-turn software transforms lose the board encoder's zero-copy fast path.
+# Use the existing lower resolution preset instead of silently keeping 720p30.
+params_path = root/'etc/robot/robotd.toml'
+params = params_path.read_text()
+media = re.search(r'^\[media\]\s*\n(?P<body>.*?)(?=^\[|\Z)', params, re.M | re.S)
+if media:
+    body = media.group('body')
+    body = re.sub(r'^quality\s*=.*$', 'quality = "360p30"', body, flags=re.M) if re.search(r'^quality\s*=', body, re.M) else 'quality = "360p30"\n'+body
+    params = params[:media.start('body')]+body+params[media.end('body'):]
+else:
+    params += '\n[media]\nquality = "360p30"\n'
+params_path.write_text(params)
 install(here/'runtime/hello-camera.service', '/etc/systemd/system/hello-camera.service')
 install(payload/'mediad', '/usr/local/lib/hello-microduck/mediad', 0o755)
 dropin = root/'etc/systemd/system/mediad.service.d/zzzzzz-hello-camera.conf'
@@ -72,7 +85,11 @@ subprocess.run(['chroot', str(root), 'chage', '-d', '20600', '-M', '99999', 'rad
 
 # Snapshot the verified board-specific boot files without rewriting their contents.
 backup = root/'var/lib/hello-microduck/boot-reference'
-shutil.copytree(root/'boot', backup, symlinks=True)
+backup.mkdir(parents=True, exist_ok=True)
+for name in ('armbianEnv.txt', 'boot.cmd', 'boot.scr'):
+    shutil.copyfile(root/'boot'/name, backup/name)
+links = {name: os.readlink(root/'boot'/name) for name in ('Image', 'dtb', 'uInitrd')}
+(backup/'links.json').write_text(json.dumps(links, indent=2)+'\n')
 manifest = {
     'name': 'Hello MicroDuck R1 preview',
     'upstream': 'kissqy/Microduck-kissqy',
