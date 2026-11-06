@@ -47,6 +47,7 @@ jobs:
           curl --fail --location --retry 4 -o assets/microduck-zero3w-0.15.1-R1.img.xz https://github.com/kissqy/Microduck-kissqy/releases/download/public-image-r1/microduck-zero3w-0.15.1-R1.img.xz
           cp upstream/microduck-hd1910/firmware/target/release/mediad payload/
           sudo --preserve-env=HELLO_DEFAULT_PASSWORD_HASH,HELLO_AP_PSK bash firmware/build-image.sh "$PWD/assets" "$PWD/upstream/microduck-hd1910/firmware" "$PWD/payload"
+          sudo chown -R "$(id -u):$(id -g)" assets/output
           cp firmware/README.md assets/output/README.md
       - uses: actions/upload-artifact@v4
         with:
