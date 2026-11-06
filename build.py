@@ -59,7 +59,7 @@ def pager(step: int, up: str) -> str:
     nxt = (
         f'<a class="btn main" href="#{FEETECH[step][0]}">继续：{FEETECH[step][1]} ↓</a>'
         if step < len(FEETECH)
-        else f'<a class="btn main" href="{up}tool/">打开调试工具 →</a>'
+        else '<a class="btn main" href="#local-debug">查看本机部署与使用说明 ↑</a>'
     )
     return f'<div class="pager">{prev}{nxt}</div>'
 
@@ -95,7 +95,7 @@ def page(title: str, body: str, step: int, depth: int) -> str:
   <nav class="topnav" aria-label="网站导航">
     <a href="{up}feetech/">飞特方案</a>
     <a href="{up}xl330/">XL330 方案</a>
-    <a href="{up}tool/">调试工具</a>
+    <a href="{up}feetech/#local-debug">调试工具部署</a>
     <a href="{REPO}" target="_blank" rel="noopener">GitHub ↗</a>
   </nav>
 </header>
@@ -131,6 +131,8 @@ def main() -> None:
         # 旧的独立页面统一进入长教程的对应小节。
         (OUT / "feetech" / f"{slug}.html").unlink(missing_ok=True)
     (OUT / "_redirects").write_text("\n".join(redirects) + "\n", encoding="utf-8")
+    from scripts.package_local import main as package_local
+    package_local()
 
 
 if __name__ == "__main__":

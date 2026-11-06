@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MicroDuck 本机调试</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<body>
+<header><div><span class="eyebrow">HELLO-MICRODUCK · LOCAL</span><h1>本机实机调试</h1></div><button id="relax" class="danger" disabled>停止并卸力</button></header>
+<main>
+<section aria-labelledby="connect-title">
+  <h2 id="connect-title">1. 连接机器人</h2>
+  <p>本服务通过 SSH 调用机器人已有的 robotd。连接不会启用舵机，也不会安装或切换固件。电脑与机器人需处于同一网络。</p>
+  <form id="connection">
+    <label>SSH 地址<input name="target" value="radxa@microduck.local" required autocomplete="off" spellcheck="false"></label>
+    <label>SSH 端口<input name="port" type="number" value="22" min="1" max="65535" required></label>
+    <label>SSH 密码<input name="password" type="password" autocomplete="off" placeholder="已配置密钥时留空"></label>
+    <label>robotd socket<input name="socket" value="/run/robotd.sock" required spellcheck="false"></label>
+    <div class="row"><button type="submit">连接并读取状态</button><button type="button" id="disconnect" disabled>断开 SSH</button></div>
+    <div id="host-key" hidden><p>首次连接：请与机器人终端中的 SSH 主机公钥指纹核对，确认是自己的设备。</p><code id="fingerprint"></code><button type="button" id="trust">指纹一致，连接此设备</button></div>
+  </form>
+  <p class="muted">密码仅用于本次 SSH 登录，不写入磁盘。首次确认的主机公钥保存在 backend/.state/known_hosts；主机密钥变化时拒绝连接。</p>
+</section>
+<p id="message" role="status" aria-live="polite">尚未连接。这里显示的读数来自实机，没有模拟回退。</p>
+<section>
+  <div class="section-heading"><h2>2. 实时反馈与已保存标定</h2><button id="refresh" disabled>立即刷新</button></div>
+  <p id="summary">等待 robotd 反馈。</p>
+  <div class="table-wrap"><table><thead><tr><th>ID / 关节</th><th>原始位置</th><th>电压 V</th><th>温度 °C</th><th>已保存零位 / 方向</th></tr></thead><tbody id="servos"></tbody></table></div>
+  <p id="calibration-info" class="muted"></p>
+  <details><summary>查看完整总线与 IMU 数据</summary><pre id="raw">未连接</pre></details>
+</section>
+<section>
+  <h2>3. 采集单关节标定</h2>
+  <p>必须先按固件说明进入 commissioning 模式。采集不会转动关节：先扶稳、卸力，用手摆到一个已知物理角度，再记录当前编码器值。方向和限位请按装配测量填写，不使用演示预设。</p>
+  <label class="check"><input id="supported" type="checkbox">机器人已停止运动并可靠支撑</label>
+  <form id="capture">
+    <label>关节<select name="id" id="joint"></select></label>
+    <label>当前已知物理角度 °<input name="angle_deg" type="number" step="any" required placeholder="摆好后填写"></label>
+    <label>转动方向<select name="direction" required><option value="">按装配测量选择</option value="-1">−1</option><option value="1">+1</option></select></label>
+    <label>最小角度 °<input name="min_deg" type="number" step="any" required></label>
+    <label>最大角度 °<input name="max_deg" type="number" step="any" required></label>
+    <button type="submit" id="save" disabled>读取当前位置并写入此关节标定</button>
+  </form>
+  <p class="muted">保存由 robotd 验证并写入它配置的标定路径，其他关节保留。每次保存会关闭运动使能；本工具不启用行走策略。</p>
+</section>
+<section>
+  <h2>4. IMU 安装确认</h2>
+  <p>上面的原始数据提供真实 IMU 反馈。请按机器人固件说明核对安装轴向；此操作只确认现有安装配置，不自动推算新的旋转四元数。</p>
+  <label class="check"><input id="imu-confirmed" type="checkbox">已按固件说明核对当前 IMU 安装方向</label>
+  <button id="imu" disabled>将安装确认写入标定</button>
+</section>
+<section>
+  <h2>独立舵机转到装配中位</h2>
+  <p>仅适用于通过机器人 robotd 总线连接、且舵盘已拆下的单颗舵机。灵影 USB TTL 板设置 ID 请使用下载包 tools/feetech/ 内的 FD 软件，勿同时打开串口。</p>
+  <label class="check"><input id="unassembled" type="checkbox">所选舵机已拆离骨架并拆下舵盘，允许转动</label>
+  <button id="center" disabled>将上方选中的单颗舵机转到 2048</button>
+</section>
+<footer>真实硬件尚需按你的机器人和固件验收。服务断开不会自动保证机器人卸力；退出前请明确执行“停止并卸力”并核对回执。<a href="https://hello-microduck.pages.dev/feetech/#local-debug" target="_blank" rel="noopener">使用说明 ↗</a></footer>
+</main></body></html>
