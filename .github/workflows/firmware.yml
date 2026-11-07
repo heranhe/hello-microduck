@@ -1,0 +1,57 @@
+name: Hello firmware
+on:
+  push:
+    paths: ['firmware/**', '.github/workflows/firmware.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Linux build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-bad1.0-dev gstreamer1.0-plugins-good gstreamer1.0-plugins-bad
+          rustup toolchain install 1.99.1 --profile minimal
+      - name: Fixed upstream source
+        run: |
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/kissqy/Microduck-kissqy.git upstream
+          git -C upstream fetch --depth 1 origin fc0cb40ad6c8da3628e0404abb45035b53bcbe16
+          git -C upstream checkout fc0cb40ad6c8da3628e0404abb45035b53bcbe16
+          git -C upstream sparse-checkout set microduck-hd1910/firmware microduck-hd1910/docs microduck-hd1910/LICENSES
+          python3 firmware/apply-source.py upstream/microduck-hd1910/firmware
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            upstream/microduck-hd1910/firmware/target
+          key: hello-arm64-${{ hashFiles('firmware/apply-source.py', 'firmware/runtime/*.rs') }}
+          restore-keys: hello-arm64-
+      - name: Tests and ARM64 compilation
+        run: |
+          python3 -m unittest discover -s firmware/tests -v
+          python3 -m unittest discover -s upstream/microduck-hd1910/firmware/scripts/tests -p test_repair_armbian_env.py -v
+          cd upstream/microduck-hd1910/firmware
+          cargo +1.99.1 test --locked -p mediad --lib
+          cargo +1.99.1 build --locked --release -p mediad
+      - name: Build and verify flashable image
+        env:
+          HELLO_DEFAULT_PASSWORD_HASH: ${{ secrets.HELLO_DEFAULT_PASSWORD_HASH }}
+          HELLO_AP_PSK: ${{ secrets.HELLO_AP_PSK }}
+        run: |
+          mkdir -p assets payload
+          curl --fail --location --retry 4 -o assets/microduck-zero3w-0.15.1-R1.img.xz https://github.com/kissqy/Microduck-kissqy/releases/download/public-image-r1/microduck-zero3w-0.15.1-R1.img.xz
+          cp upstream/microduck-hd1910/firmware/target/release/mediad payload/
+          sudo --preserve-env=HELLO_DEFAULT_PASSWORD_HASH,HELLO_AP_PSK bash firmware/build-image.sh "$PWD/assets" "$PWD/upstream/microduck-hd1910/firmware" "$PWD/payload"
+          sudo chown -R "$(id -u):$(id -g)" assets/output
+          cp firmware/README.md assets/output/README.md
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hello-microduck-r1-preview
+          path: assets/output/
+          compression-level: 0
+          retention-days: 14

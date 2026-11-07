@@ -385,6 +385,10 @@ python3 -m http.server 8000 --bind 127.0.0.1 --directory site
 
 作者推荐从同一家店买 **HAT、IMU 转接板和香蕉电源板（banana_pcb）**，商品标题为“microduck开源机器鸭 kissqy开源仓库同款HAT加IMU TO DXL套件”，选**飞特兼容版本**：可直接兼容飞特舵机线，R33 电阻已优化，喇叭可直插。 [淘宝链接 ↗](https://e.tb.cn/h.jRVOJbCVQ9ESt2i?tk=dURX6YsSy3l)
 
+## Hello 固件预览版
+
+[固件构建与使用说明](firmware/README.md)包含启动配置写入修复、统一默认密码，以及在主板上保存并应用的摄像头实际像素标定。[固件下载](https://github.com/heranhe/hello-microduck/releases)见 Release。新镜像仍需实机刷卡和反复重启验收。
+
 ## 还在补充
 
 - [ ] HD-1910 版打印文件的下载地址和打印参数
