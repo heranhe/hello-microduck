@@ -5,14 +5,14 @@
 
 <div class="note">
   <b>本机调试和在线演示使用不同入口</b>
-  <p>本机后台显示真实 SSH 与 robotd 数据。本站的七步页面仍是模拟流程，用于熟悉操作；它不连接本机后台，不会写入机器人，也不要在演示页填真实密码。</p>
+  <p>本机后台显示真实 SSH 与 robotd 数据。本站的七步页面是模拟流程，用于熟悉操作；它不连接本机后台，不会写入机器人，也不要在演示页填真实密码。</p>
 </div>
 
 <h2 id="local-debug">在自己的电脑上部署</h2>
 <ol class="how">
   <li><b>下载并完整解压：</b>下载上面的本机调试包，或获取 GitHub 源码。需要 Python 3.9 或更新版本，首次启动需联网安装依赖。</li>
   <li><b>启动本机后台：</b>macOS 可双击 <code>start.command</code>，或在项目目录运行 <code>bash start.command</code>；Windows 安装 Python（含 Launcher）后双击 <code>start.cmd</code>；Linux 同样运行 <code>bash start.command</code>。</li>
-  <li><b>在自己的电脑打开：</b>启动器会打开 <code>http://127.0.0.1:8098/</code>。填写机器人 SSH 地址和密码，或使用已经配置好的密钥；首次连接需核对 SSH 主机指纹。</li>
+  <li><b>在自己的电脑打开：</b>电脑和 MicroDuck 要连在同一个 Wi-Fi。启动器会打开 <code>http://127.0.0.1:8098/</code>。填写机器人 SSH 地址和密码，或使用已经配置好的密钥；首次连接需核对 SSH 主机指纹。</li>
   <li><b>确认固件接口：</b>机器人需已运行支持 <code>robot.busStatus</code> 与 <code>robot.busCommand</code> 的飞特版 robotd，默认 socket 为 <code>/run/robotd.sock</code>。写入标定前须按固件说明进入 <code>commissioning</code> 模式；本工具不会替你安装或切换固件。</li>
   <li><b>读取、再采集：</b>核对总线和 IMU 反馈，支撑机身并卸力，手动摆到已知角度；填写实测方向与限位，再写入选中关节的标定。卸力可随时单独操作，单颗回中位要求先拆下舵盘。</li>
 </ol>
@@ -22,7 +22,7 @@ bash start.command</code></pre>
 <p><a href="https://github.com/heranhe/hello-microduck/tree/main/backend" target="_blank" rel="noopener">后台源码、手动安装与固件接口说明 ↗</a> · <a href="../downloads/SHA256SUMS.txt" target="_blank" rel="noopener">下载包 SHA-256 校验 ↗</a></p>
 <div class="note warn">
   <b>真实功能与验收范围</b>
-  <p>后台已实现真实 SSH、总线/IMU 原始反馈、标定读取与单关节写入、IMU 安装确认、卸力、单颗回中位。本次通过协议夹具和自动测试验证，尚未在真实机器人上验收；首次使用先核对固件和只读反馈。摄像头视频、ToF 服务、手柄配对和行走策略未接入这个后台。</p>
+  <p>后台已实现真实 SSH、总线/IMU 原始反馈、标定读取与单关节写入、IMU 安装确认、卸力、单颗回中位。目前只通过协议夹具和自动测试验证，还没有在真实机器人上验收；首次使用先核对固件和只读反馈。摄像头视频、ToF 服务、手柄配对和行走策略未接入这个后台。</p>
 </div>
 <p>装机前的 ID 编号使用 <a href="#fd-software">灵影 TTL Adapter(A) + 仓库随附飞特 FD 软件</a>。它通过 USB 串口连接单颗舵机，与装机后的 SSH 调试后台是两条不同流程。</p>
 <p><a class="btn" href="../tool/">仅预览七步流程（模拟数据）↗</a></p>
@@ -33,9 +33,9 @@ bash start.command</code></pre>
   <li><div><b>检查</b><span>15 颗舵机全部正常在线。哪颗有问题，会直接告诉你 ID。</span></div></li>
   <li><div><b>摆零位</b><span>照屏幕把腿和头摆正，一次设一条腿，也可以一颗一颗设。</span></div></li>
   <li><div><b>姿态传感器</b><span>扶正、前倾、左倾，各停一下。</span></div></li>
-  <li><div><b>摄像头 / ToF（可选）</b><span>同一页确认画面和距离变化，可以单独跳过某一项，也可以直接跳过未检查项。</span></div></li>
+  <li><div><b>摄像头与 ToF（可选）</b><span>同一页确认画面和距离变化，可以单独跳过某一项，也可以直接跳过未检查项。</span></div></li>
   <li><div><b>试站</b><span>让它慢慢站起来，对照屏幕看姿势。局部有偏差，可以只重标一颗，或小幅微调、试用后再保存。</span></div></li>
-  <li><div><b>手柄</b><span>连上手柄，学几个常用按键。</span></div></li>
+  <li><div><b>手柄（可选）</b><span>连上手柄，学几个常用按键。</span></div></li>
 </ol>
 
 <h2>每一步长什么样</h2>
@@ -85,10 +85,9 @@ bash start.command</code></pre>
 </figure>
 
 <h2>试站后只修正有偏差的关节</h2>
-<p>在“有偏差，调整”中选择关节。微调支持 0.1° 和 0.5° 步长，先试用，效果合适再保存；修改后重新试站确认。明显摆错或拆装过，就重标那颗关节，其他关节的结果会保留。每颗最多调 ±3°，先“试用”，效果合适再“保存”，保存后要重新试站。</p>
-<p>摄像头和 ToF 已放进第 5 步；跳过结果会保留在完成页，之后可以补做。</p>
+<p>在“有偏差，调整”中选择关节。微调支持 0.1° 和 0.5° 步长，每颗最多调 ±3°；先“试用”，效果合适再“保存”，保存后重新试站确认。明显摆错或拆装过，就重标那颗关节，其他关节的结果会保留。</p>
 
-<div class="note"><b>结果只在当前页面保留</b><p>标定、微调和检查结果都只在当前页面会话里保留，刷新后重置；刷新时如果有没保存的微调，会先提示。完整的交互规则在 <a href="https://github.com/heranhe/hello-microduck/blob/main/docs/calibration-interaction.md" target="_blank" rel="noopener">GitHub 的交互说明 ↗</a>。</p></div>
+<div class="note"><b>演示页的结果只在当前页面保留</b><p>在线演示页里的标定、微调和检查结果都只在当前页面会话里保留，刷新后重置；刷新时如果有没保存的微调，会先提示。完整的交互规则在 <a href="https://github.com/heranhe/hello-microduck/blob/main/docs/calibration-interaction.md" target="_blank" rel="noopener">GitHub 的交互说明 ↗</a>。</p></div>
 
 <h2 id="training-lab">接下来：部署训练实验室</h2>
 <p>训练实验室是另一个需要在自己电脑上安装、启动的项目。它用于仿真训练、世界模拟和动作编辑，源码与安装步骤见 <a href="https://github.com/heranhe/microduck-lab-cloud#quick-start" target="_blank" rel="noopener">microduck-lab-cloud 快速开始 ↗</a>。</p>

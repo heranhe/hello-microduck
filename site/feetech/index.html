@@ -81,7 +81,7 @@
   </tbody>
   <tfoot><tr><td colspan="2">参考小计</td><td class="num">≈¥122.56</td></tr></tfoot>
 </table></div>
-<p>设 ID 的反向调试线只需 1 根。互连线按参考单价 ¥1.61 × 16 根估算，实际长度和数量按走线确定。PCB 套件含电池背板 IMU、dxl_hub 和 banana_pcb。</p>
+<p>互连线按参考单价 ¥1.61 × 16 根估算，实际长度和数量按走线确定。PCB 套件含电池背板 IMU、dxl_hub 和 banana_pcb。</p>
 
 <h4>四、机械结构及紧固件</h4>
 <div class="tw"><table>
@@ -95,7 +95,7 @@
   </tbody>
   <tfoot><tr><td colspan="2">已知小计</td><td class="num">¥41.00</td></tr></tfoot>
 </table></div>
-<p>轴承型号和数量需按适配 HD-1910 版本的 CAD BOM 核对。螺丝准备 100 个即可，价格待补充。</p>
+<p>轴承型号和数量需按适配 HD-1910 版本的 CAD BOM 核对。</p>
 
 <h4>五、必要调试工具</h4>
 <div class="tw"><table>
@@ -130,23 +130,21 @@
 </div>
 
 <ul class="how">
-  <li><b>舵机：</b>装机需要 15 颗。</li>
   <li><b>调试板和反向线：</b>第 2 步给舵机设 ID 时用，一次只接一颗舵机，1 根反向调试线就够。</li>
   <li><b>SH1.0 转杜邦线：</b>第 3 步接 ToF 用。</li>
-  <li><b>螺丝：</b>按下图选 M2.5×6 十字圆头平尾自攻螺丝，准备 1 包 100 个足够。</li>
 </ul>
 
 <h3 id="recommended-boards">推荐板卡：飞特兼容版 HAT、IMU 和香蕉电源板</h3>
 <p>作者推荐从同一家店购买 <b>HAT、IMU 转接板和香蕉电源板（banana_pcb）</b>。对应商品标题为“microduck开源机器鸭 kissqy开源仓库同款HAT加IMU TO DXL套件”。</p>
 <div class="note">
   <b>优先选择飞特兼容版本</b>
-  <p>按作者提供的使用信息，这个版本的 HAT 可直接兼容飞特舵机线，R33 电阻已优化，并且支持喇叭直插。</p>
+  <p>这个版本的 HAT 可直接兼容飞特舵机线，R33 电阻已优化，并且支持喇叭直插；具体以店铺说明为准。</p>
 </div>
 <p><a class="btn main" href="https://e.tb.cn/h.jRVOJbCVQ9ESt2i?tk=dURX6YsSy3l" target="_blank" rel="noopener">查看作者推荐的淘宝商品 ↗</a></p>
 <p>下单时分别核对 HAT、IMU 转接板和香蕉电源板选项；商品选项是否包含 HUB、连接线或其他配件，以店铺说明为准。清单中的 HAT ¥120 和 PCB 套件 ¥89 为参考价，现价以所选配置为准。</p>
 
 <h3 id="servo-cables">建议另购舵机互连线</h3>
-<p><b>设 ID 的反向调试线只需 1 根；装机用的舵机互连线需要按总线布线另行准备。</b>推荐参考“永成电子”AMP2.0 线材：100 mm、特软硅胶 24#、双头反向；实际选型须核对针脚对应关系。</p>
+<p><b>装机用的舵机互连线需要按总线布线另行准备，和设 ID 用的那根反向调试线不是一回事。</b>推荐参考“永成电子”AMP2.0 线材：100 mm、特软硅胶 24#、双头反向；实际选型须核对针脚对应关系。</p>
 <figure>
   <a href="../assets/img/amp2-servo-cables.jpg" target="_blank" rel="noopener"><img src="../assets/img/amp2-servo-cables.jpg" width="1206" height="445" loading="lazy" decoding="async" alt="永成电子 AMP2.0 间距 2.0 179228 连接线规格参考，100 毫米、特软硅胶 24 号、双头反向"></a>
   <figcaption><b>线材规格参考</b>参考单价 ¥1.61，需要的长度和数量按实际走线确定。</figcaption>
@@ -166,7 +164,7 @@
 
 <div class="note warn">
   <b>清单里没有的，也要准备</b>
-  <p>电池、打印耗材、TF 读卡器、电烙铁和焊锡（焊 ToF 要用）、一台电脑。</p>
+  <p>2S 电池（规格待补充）、打印耗材、TF 读卡器、电烙铁和焊锡（焊 ToF 要用）、一台电脑。</p>
 </div>
 
 <h3>打印外壳</h3>
@@ -200,16 +198,9 @@
   <a href="../assets/img/lingying-ttl-adapter-a.png" target="_blank" rel="noopener"><img src="../assets/img/lingying-ttl-adapter-a.png" width="253" height="372" loading="lazy" decoding="async" alt="设置飞特舵机 ID 使用的灵影 TTL Adapter(A) 调试板"></a>
   <figcaption><b>调试板实物参考</b>灵影 TTL Adapter(A)，本步骤用它连接电脑与单颗飞特舵机。</figcaption>
 </figure>
-<p><b>灵影 TTL Adapter(A) 可直接配合飞特 FD 软件设置舵机 ID。</b>下载并解压下面的官方软件包，运行其中的 <code>FD1985-250729/FD.exe</code>；软件适用于 Windows，本机 SSH 后台另行支持 Mac / Windows / Linux。</p>
+<p><b>灵影 TTL Adapter(A) 可直接配合飞特 FD 软件设置舵机 ID。</b>下载并解压下面的官方软件包，运行其中的 <code>FD1985-250729/FD.exe</code>；软件适用于 Windows，本机 SSH 后台另行支持 Mac / Windows / Linux。压缩包是 .7z 格式，需要用 7-Zip 之类的工具解压。</p>
 <p><a class="btn main" href="../downloads/FD1.9.8.5(250729).7z" download>下载飞特 FD 1.9.8.5 ↧</a> <a class="btn" href="https://gitee.com/ftservo/fddebug" target="_blank" rel="noopener">飞特官方软件仓库 ↗</a></p>
 <p>原始压缩包已收录在 <code>tools/feetech/</code>，保留 FTServo 的 MIT 许可和来源。完整校验信息及灵影操作步骤见 <a href="https://github.com/heranhe/hello-microduck/tree/main/tools/feetech" target="_blank" rel="noopener">仓库内的软件说明 ↗</a>。</p>
-<ol class="how">
-  <li>灵影板通过 USB 接电脑，确认设备管理器出现对应 COM 端口；没有端口时按板上芯片型号和灵影厂商说明安装驱动。</li>
-  <li>按适配器说明给舵机供电，用已核对线序的反向调试线接上<b>单颗</b>舵机。USB 插上不代表舵机电源已经供上，TTL 与 RS-485 不能混用。</li>
-  <li>FD 选择该 COM 端口，波特率设为 <code>1000000</code>，打开并搜索；找到舵机后先停止搜索，再改 ID、写入保存。</li>
-  <li>断电重启，按新 ID 搜索并确认反馈；舵机未装入骨架且舵盘可自由运动时，再低速移到 <code>2048</code>。确认后贴编号，拔下换下一颗。</li>
-</ol>
-
 <h3 id="servo-map">每颗舵机的编号</h3>
 <p><b>下面的编号表和接线总图统一按后视方向排布：鸭子背对你，你和鸭子看向同一方向。</b>左边是鸭子的左腿（20–24），右边是鸭子的右腿（10–14）。</p>
 <p>文中的“左／右”始终指<b>鸭子自身的左／右</b>。如果你面对鸭子的嘴看，它的左腿会在你的右手边，右腿会在你的左手边。</p>
@@ -228,18 +219,15 @@
 
 <h3>怎么设</h3>
 <ol class="how">
-  <li><b>一次只接一颗舵机。</b>两颗同时接，编号一样，软件分不清。</li>
-  <li>调试板接电脑 USB，舵机用反向调试线接到调试板上。调试板怎么给舵机供电，按调试板自带的说明接。</li>
-  <li>打开飞特调试软件，波特率选 1Mbps，搜索舵机。新舵机出厂编号是 1。</li>
-  <li>把编号改成上表里的数字，写入保存。</li>
-  <li>在软件里让舵机转到 <code>2048</code>，也就是正中间。第 3 步装舵盘时要它在中间。</li>
+  <li><b>一次只接一颗舵机。</b>新舵机出厂编号都是 1，两颗同时接，软件分不清。</li>
+  <li>灵影板通过 USB 接电脑，确认设备管理器出现对应的 COM 端口；没有端口时，按板上芯片型号和灵影厂商说明安装驱动。</li>
+  <li>按调试板自带的说明给舵机供电，用已核对线序的反向调试线接上这颗舵机。USB 插上不代表舵机电源已经供上；不要插到板上的 RS-485 接口。</li>
+  <li>打开 FD，选择该 COM 端口，波特率设为 <code>1000000</code>（1 Mbps），打开端口并搜索。</li>
+  <li>搜到舵机后先停止搜索，把 ID 改成上面编号表里的数字，写入保存。</li>
+  <li>断电再上电，按新 ID 搜一次，能搜到并有反馈，就说明改好了。</li>
+  <li>舵机还没装进骨架、舵盘可以自由转动时，在软件里让它低速转到 <code>2048</code>，也就是正中间。第 3 步装舵盘时要它在中间。</li>
   <li>马上在舵机上贴纸写编号，然后拔下来，换下一颗。</li>
 </ol>
-
-<div class="note">
-  <b>改完怎么确认</b>
-  <p>重新上电再搜一次，能用新编号搜到，就说明改好了。</p>
-</div>
 
 <h4>这款舵机的几个数字</h4>
 <p>来自飞特 HD-1910-C001 的产品规格书，设 ID 和调试时会用到。</p>
@@ -273,7 +261,7 @@
 
 <div class="note">
   <b>先确认 HAT 的版本</b>
-  <p><a href="#recommended-boards">作者推荐的飞特兼容 HAT</a>可直接兼容飞特舵机线，R33 电阻已优化，喇叭可直插；IMU 转接板和香蕉电源板也推荐同一家店。下面保留的原版 HAT 接口图用于说明差异，接线时以手中板卡的丝印、针脚定义和店铺接线说明为准。</p>
+  <p><a href="#recommended-boards">作者推荐的飞特兼容 HAT</a>可直接兼容飞特舵机线，R33 电阻已优化，喇叭可直插（插入前核对插头与板上标注）；IMU 转接板和香蕉电源板也推荐同一家店。下面保留的原版 HAT 接口图用于说明差异，接线时以手中板卡的丝印、针脚定义和店铺接线说明为准。</p>
 </div>
 
 <h3>1. 摄像头接到主板</h3>
@@ -300,7 +288,7 @@
   </figure>
 </div>
 
-<p>六个小孔从上到下这样接（方向和图 4 一样）：</p>
+<p>六个小孔从上到下这样接（方向见下面的图 4）：</p>
 <div class="tw"><table>
   <thead><tr><th>线色</th><th>ToF 孔位</th><th>接到 HAT 的 J5</th></tr></thead>
   <tbody>
@@ -337,8 +325,8 @@
   <figcaption><b>图 5</b>HAT 板上的 J5，1 号脚在 J6 一侧（图中左边）。</figcaption>
 </figure>
 <div class="note">
-  <b>插好后会在哪里看到它</b>
-  <p>系统写好后，调试工具的“传感器”页会显示 ToF 的距离。用手挡在嘴前面，距离变近就说明接对了。</p>
+  <b>插好后怎么确认</b>
+  <p>在线演示工具的第 5 步“摄像头与 ToF”演示了检查方法：用手挡在嘴前面，距离变近就说明接对了。本机调试后台暂时还没有接入 ToF 读数。</p>
 </div>
 
 <h3>4. 看清舵机线序</h3>
@@ -366,7 +354,7 @@
   <b>上电前一定要确认</b>
   <p>无论使用哪个版本，都先断电，用万用表核对线两端的信号、电源和 GND。线材的商品名称“同向／反向”不能代替实际针脚核对；信号和 GND 接错，舵机不会回应。</p>
 </div>
-<p>喇叭使用推荐兼容板的直插接口，插入前核对插头与板上标注。装机互连线建议参考<a href="#servo-cables">作者另购的软硅胶 AMP2.0 线材</a>；若出现丢包和动作卡顿，同时检查线材、接头、供电和总线状态。</p>
+<p>装机互连线建议参考<a href="#servo-cables">作者另购的软硅胶 AMP2.0 线材</a>；若出现丢包和动作卡顿，同时检查线材、接头、供电和总线状态。</p>
 
 <h3 id="single-j13">5. 按单 J13 方案接总线</h3>
 <p><b>这套接法只用 HAT 的 J13，J14 留空。</b>头颈舵机、两条腿和 IMU 接到同一条三线总线上，按下面这张总图核对。图中的 HAT 针脚是原版参考；飞特兼容板按自身接口定义接线。</p>
@@ -388,7 +376,10 @@
     <tr><td>3 · DXL_DATA</td><td>1 · SERVO_BUS</td></tr>
   </tbody>
 </table></div>
-<p class="note warn">HUB 的 3P 接口彼此并联。插头方向和脚位以板上丝印、焊盘编号及万用表导通结果为准，上电前核对 GND、VIN、DATA。</p>
+<div class="note warn">
+  <b>HUB 的 3P 接口彼此并联</b>
+  <p>插头方向和脚位以板上丝印、焊盘编号及万用表导通结果为准，上电前核对 GND、VIN、DATA。</p>
+</div>
 
 <h3>6. 装舵机</h3>
 <ol class="how">
@@ -452,14 +443,14 @@
 
 <div class="note">
   <b>本机调试和在线演示使用不同入口</b>
-  <p>本机后台显示真实 SSH 与 robotd 数据。本站的七步页面仍是模拟流程，用于熟悉操作；它不连接本机后台，不会写入机器人，也不要在演示页填真实密码。</p>
+  <p>本机后台显示真实 SSH 与 robotd 数据。本站的七步页面是模拟流程，用于熟悉操作；它不连接本机后台，不会写入机器人，也不要在演示页填真实密码。</p>
 </div>
 
 <h3 id="local-debug">在自己的电脑上部署</h3>
 <ol class="how">
   <li><b>下载并完整解压：</b>下载上面的本机调试包，或获取 GitHub 源码。需要 Python 3.9 或更新版本，首次启动需联网安装依赖。</li>
   <li><b>启动本机后台：</b>macOS 可双击 <code>start.command</code>，或在项目目录运行 <code>bash start.command</code>；Windows 安装 Python（含 Launcher）后双击 <code>start.cmd</code>；Linux 同样运行 <code>bash start.command</code>。</li>
-  <li><b>在自己的电脑打开：</b>启动器会打开 <code>http://127.0.0.1:8098/</code>。填写机器人 SSH 地址和密码，或使用已经配置好的密钥；首次连接需核对 SSH 主机指纹。</li>
+  <li><b>在自己的电脑打开：</b>电脑和 MicroDuck 要连在同一个 Wi-Fi。启动器会打开 <code>http://127.0.0.1:8098/</code>。填写机器人 SSH 地址和密码，或使用已经配置好的密钥；首次连接需核对 SSH 主机指纹。</li>
   <li><b>确认固件接口：</b>机器人需已运行支持 <code>robot.busStatus</code> 与 <code>robot.busCommand</code> 的飞特版 robotd，默认 socket 为 <code>/run/robotd.sock</code>。写入标定前须按固件说明进入 <code>commissioning</code> 模式；本工具不会替你安装或切换固件。</li>
   <li><b>读取、再采集：</b>核对总线和 IMU 反馈，支撑机身并卸力，手动摆到已知角度；填写实测方向与限位，再写入选中关节的标定。卸力可随时单独操作，单颗回中位要求先拆下舵盘。</li>
 </ol>
@@ -469,7 +460,7 @@ bash start.command</code></pre>
 <p><a href="https://github.com/heranhe/hello-microduck/tree/main/backend" target="_blank" rel="noopener">后台源码、手动安装与固件接口说明 ↗</a> · <a href="../downloads/SHA256SUMS.txt" target="_blank" rel="noopener">下载包 SHA-256 校验 ↗</a></p>
 <div class="note warn">
   <b>真实功能与验收范围</b>
-  <p>后台已实现真实 SSH、总线/IMU 原始反馈、标定读取与单关节写入、IMU 安装确认、卸力、单颗回中位。本次通过协议夹具和自动测试验证，尚未在真实机器人上验收；首次使用先核对固件和只读反馈。摄像头视频、ToF 服务、手柄配对和行走策略未接入这个后台。</p>
+  <p>后台已实现真实 SSH、总线/IMU 原始反馈、标定读取与单关节写入、IMU 安装确认、卸力、单颗回中位。目前只通过协议夹具和自动测试验证，还没有在真实机器人上验收；首次使用先核对固件和只读反馈。摄像头视频、ToF 服务、手柄配对和行走策略未接入这个后台。</p>
 </div>
 <p>装机前的 ID 编号使用 <a href="#fd-software">灵影 TTL Adapter(A) + 仓库随附飞特 FD 软件</a>。它通过 USB 串口连接单颗舵机，与装机后的 SSH 调试后台是两条不同流程。</p>
 <p><a class="btn" href="../tool/">仅预览七步流程（模拟数据）↗</a></p>
@@ -480,9 +471,9 @@ bash start.command</code></pre>
   <li><div><b>检查</b><span>15 颗舵机全部正常在线。哪颗有问题，会直接告诉你 ID。</span></div></li>
   <li><div><b>摆零位</b><span>照屏幕把腿和头摆正，一次设一条腿，也可以一颗一颗设。</span></div></li>
   <li><div><b>姿态传感器</b><span>扶正、前倾、左倾，各停一下。</span></div></li>
-  <li><div><b>摄像头 / ToF（可选）</b><span>同一页确认画面和距离变化，可以单独跳过某一项，也可以直接跳过未检查项。</span></div></li>
+  <li><div><b>摄像头与 ToF（可选）</b><span>同一页确认画面和距离变化，可以单独跳过某一项，也可以直接跳过未检查项。</span></div></li>
   <li><div><b>试站</b><span>让它慢慢站起来，对照屏幕看姿势。局部有偏差，可以只重标一颗，或小幅微调、试用后再保存。</span></div></li>
-  <li><div><b>手柄</b><span>连上手柄，学几个常用按键。</span></div></li>
+  <li><div><b>手柄（可选）</b><span>连上手柄，学几个常用按键。</span></div></li>
 </ol>
 
 <h3>每一步长什么样</h3>
@@ -532,10 +523,9 @@ bash start.command</code></pre>
 </figure>
 
 <h3>试站后只修正有偏差的关节</h3>
-<p>在“有偏差，调整”中选择关节。微调支持 0.1° 和 0.5° 步长，先试用，效果合适再保存；修改后重新试站确认。明显摆错或拆装过，就重标那颗关节，其他关节的结果会保留。每颗最多调 ±3°，先“试用”，效果合适再“保存”，保存后要重新试站。</p>
-<p>摄像头和 ToF 已放进第 5 步；跳过结果会保留在完成页，之后可以补做。</p>
+<p>在“有偏差，调整”中选择关节。微调支持 0.1° 和 0.5° 步长，每颗最多调 ±3°；先“试用”，效果合适再“保存”，保存后重新试站确认。明显摆错或拆装过，就重标那颗关节，其他关节的结果会保留。</p>
 
-<div class="note"><b>结果只在当前页面保留</b><p>标定、微调和检查结果都只在当前页面会话里保留，刷新后重置；刷新时如果有没保存的微调，会先提示。完整的交互规则在 <a href="https://github.com/heranhe/hello-microduck/blob/main/docs/calibration-interaction.md" target="_blank" rel="noopener">GitHub 的交互说明 ↗</a>。</p></div>
+<div class="note"><b>演示页的结果只在当前页面保留</b><p>在线演示页里的标定、微调和检查结果都只在当前页面会话里保留，刷新后重置；刷新时如果有没保存的微调，会先提示。完整的交互规则在 <a href="https://github.com/heranhe/hello-microduck/blob/main/docs/calibration-interaction.md" target="_blank" rel="noopener">GitHub 的交互说明 ↗</a>。</p></div>
 
 <h3 id="training-lab">接下来：部署训练实验室</h3>
 <p>训练实验室是另一个需要在自己电脑上安装、启动的项目。它用于仿真训练、世界模拟和动作编辑，源码与安装步骤见 <a href="https://github.com/heranhe/microduck-lab-cloud#quick-start" target="_blank" rel="noopener">microduck-lab-cloud 快速开始 ↗</a>。</p>
