@@ -448,4 +448,6 @@ npm run deploy
 
 ## 许可
 
-还没有选定许可证，选好后补上。
+- **代码**（调试工具、本机后台、构建脚本、测试）：[Apache License 2.0](LICENSE)，和上游 [pollen-robotics/microduck](https://github.com/pollen-robotics/microduck) 一致。
+- **教程内容**（文字、作者拍摄的照片、工具截图）：[CC BY 4.0](LICENSE-CONTENT.md)。转载、改编、商用都可以，注明出处即可。
+- **第三方文件**按各自许可使用，不在上面两项范围内。清单见 [LICENSE-CONTENT.md](LICENSE-CONTENT.md#不在-cc-by-40-范围内的文件)。
