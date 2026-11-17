@@ -27,7 +27,7 @@
 | `site/assets/fonts/anton.ttf` | Anton 字体 | SIL OFL 1.1，见 [OFL-Anton.txt](site/assets/fonts/OFL-Anton.txt) |
 | 调试工具中的 MicroDuck 3D 模型、关节范围、配色 | [pollen-robotics/microduck](https://github.com/pollen-robotics/microduck)、[microduck-simulator](https://huggingface.co/spaces/pollen-robotics/microduck-simulator) | Apache-2.0 |
 | 调试工具中的手柄 3D 模型 | “[Xbox Elite Controller](https://sketchfab.com/3d-models/xbox-elite-controller-32aad0ff25f7446b8afe649ea3cc9e43)”，作者 [Rusfort](https://sketchfab.com/Rusfort) | CC BY 4.0（已修改） |
-| `site/downloads/hello-duck摆盘.3mf` | 基于 MicroDuck 外壳模型改编 | Apache-2.0，随上游 |
+| `site/downloads/hello-duck摆盘.3mf` | 基于 [pollen-robotics/microduck](https://github.com/pollen-robotics/microduck) 官方外壳模型修改，适配飞特 HD-1910 | Apache-2.0，随上游；修改部分同样以 Apache-2.0 提供 |
 | `site/assets/img/servo-pinout-spec.webp`（图 6） | 飞特 HD-1910-C001 产品规格书 | 版权归飞特，仅作说明引用 |
 | `site/assets/img/hat-servo-pins.webp`（图 7） | Robot HAT 的 PCB 工程 | 版权归原作者，仅作说明引用 |
 
