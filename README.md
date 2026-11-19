@@ -74,7 +74,7 @@
 
 > **线材不稳，也可能让鸭子走路卡顿、摔倒。**舵机随附线材可能出现丢包，所以建议另购连接可靠的互连线。出现卡顿时，也要同时排查供电、接触和总线状态。
 
-**打印文件：**[下载 hello-duck摆盘.3mf](site/downloads/hello-duck摆盘.3mf) · [网页直接下载](https://hello-microduck.pages.dev/downloads/hello-duck%E6%91%86%E7%9B%98.3mf)
+**打印文件：**[在 MakerWorld 查看并下载打印配置](https://makerworld.com.cn/zh/models/3289996-hello-microduck-shuang-zu-ji-qi-ya-fei-te-hd-1910#profileId-3888158)
 
 这是 3MF 摆盘工程，可用支持 3MF 的切片软件打开。打印前核对打印机、耗材和切片设置，具体打印参数说明后续补充。
 
@@ -389,7 +389,7 @@ python3 -m http.server 8000 --bind 127.0.0.1 --directory site
 
 ## 还在补充
 
-- [x] 打印摆盘工程 `hello-duck摆盘.3mf` 的仓库与网页下载地址
+- [x] 在 MakerWorld 发布飞特 HD-1910 版 3MF 摆盘
 - [ ] 打印参数说明
 - [ ] 适配这套硬件的系统镜像和下载地址
 - [ ] 螺丝价格、轴承装机数量（按 CAD BOM 核对）
