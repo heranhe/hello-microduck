@@ -951,7 +951,7 @@ function panelBody(){
     const C=S.conn,ST=['找到 MicroDuck','登录主控','读取固件版本'];
     if(C.up&&C.sub!=='busy')return html`<h1>已连接</h1><p class="say">${C.addr}</p><ul class="plain"><li>MicroDuck 主控在线</li></ul><div class="spring"></div><button class="btn main" data-a="advance" data-primary>继续</button>${foot(html`<button class="link" data-a="reconnect">换一台或重新连接</button>`)}${aboutNote}`;
     if(C.sub==='busy')return html`<h1>正在连接</h1><ul class="plain">${ST.map((s,i)=>html`<li class="${i<C.stage?'':i===C.stage?'go':'wait'}">${s}</li>`)}</ul><div class="spring"></div>`;
-    return html`<h1>预览连接流程</h1><div class="note warn"><strong>当前为演示，不连接真机</strong>无需机器人，请勿填写真实 SSH 密码。真实调试请下载本机后台，在 127.0.0.1:8098 使用独立界面。<a href="../feetech/#local-debug">下载后台与查看部署说明 ↗</a></div><p class="say">保留示例地址，点击下方按钮体验模拟连接。</p>
+    return html`<h1>预览连接流程</h1><div class="note warn"><strong>当前为演示，不连接真机</strong>无需机器人，请勿填写真实 SSH 密码。${location.pathname==='/preview/'?'要连接机器人，请点击中控台顶部「本机实机调试」。':html`要连接机器人，请先运行本机中控台。<a href="../feetech/#local-debug">下载中控台与查看部署说明 ↗</a>`}</div><p class="say">保留示例地址，点击下方按钮体验模拟连接。</p>
     ${C.err?html`<div class="note bad"><strong>${C.err[0]}</strong>${C.err[1]}</div>`:''}
     <div class="field"><label for="sshAddr">SSH 地址（用户名@MicroDuck 的 IP）</label><input id="sshAddr" value="${C.addr}" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
     <div class="field"><label for="sshPass">演示密码（留空，不填真实密码）</label><input id="sshPass" type="password" autocomplete="off"></div>

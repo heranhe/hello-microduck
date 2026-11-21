@@ -224,9 +224,9 @@ SH1.0 那头插到 **J5**，1 号脚在靠近 J6 的一侧。
 
 实机标定需要先在自己的电脑上安装、启动与机器人固件匹配的调试服务，再打开本机地址，由本地服务连接 MicroDuck。每个舵机装得都有一点不一样，标定就是告诉它各关节的“正中间”在哪。
 
-**本仓库已提供真实本机后台与独立界面**，位于 [backend/](backend/README.md)。支持 SSH、总线/IMU 原始反馈、单关节标定写入、IMU 安装确认、卸力及拆下舵盘后的单颗回中位；不包含机器人固件，不自动切换服务，也不提供行走策略启用。
+**本机中控台启动后默认打开新版七步标定向导演示。** 顶部「本机实机调试」可进入 [SSH 调试功能](backend/README.md)。支持 SSH、总线/IMU 原始反馈、单关节标定写入、IMU 安装确认、卸力及拆下舵盘后的单颗回中位；不包含机器人固件，不自动切换服务，也不提供行走策略启用。
 
-**下载部署：**完整解压[本机调试包](https://hello-microduck.pages.dev/downloads/hello-microduck-local.zip)，安装 Python 3.9+。macOS 双击 `start.command`（或执行 `bash start.command`），Windows 双击 `start.cmd`（需 Python Launcher），Linux 执行 `bash start.command`。首次启动联网安装 Paramiko，随后打开 <http://127.0.0.1:8098/>。
+**下载部署：**完整解压[本机调试包](https://hello-microduck.pages.dev/downloads/hello-microduck-local.zip)，安装 Python 3.9+。macOS 双击 `start.command`（或执行 `bash start.command`），Windows 双击 `start.cmd`（需 Python Launcher），Linux 执行 `bash start.command`。首次启动联网安装 Paramiko，随后打开 <http://127.0.0.1:8098/>。需要连接机器人时，点击顶部「本机实机调试」。
 
 机器人需已有支持 `robot.busStatus` / `robot.busCommand` 的飞特版 robotd，默认 socket `/run/robotd.sock`；标定写入要求机器人处于 `commissioning` 模式，按固件说明准备。首次 SSH 连接需核对主机指纹；密码不保存。**本次完成协议夹具与自动测试，尚未进行真实机器人验收**，先核对固件和只读反馈再操作。摄像头、ToF、手柄与行走尚未接入本后台。
 
@@ -241,7 +241,7 @@ python3 build.py
 python3 -m http.server 8000 --bind 127.0.0.1 --directory site
 ```
 
-在运行命令的电脑打开 <http://127.0.0.1:8000/tool/>；这是本地演示服务，仍不能调试实机。终端按 `Ctrl+C` 停止。实机版本发布后，会补充对应安装包与启动说明。
+在运行命令的电脑打开 <http://127.0.0.1:8000/tool/>；这是本地演示服务，仍不能调试实机。终端按 `Ctrl+C` 停止。实机调试入口见上方本机部署说明。
 
 <table>
 <tr>

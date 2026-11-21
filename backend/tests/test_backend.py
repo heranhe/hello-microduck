@@ -171,6 +171,28 @@ class HTTPTests(unittest.TestCase):
         status,body,_=self.request('/api/status',{},self.valid_headers())
         self.assertEqual(status,200);self.assertEqual(json.loads(body)['result'],{'connected':False})
 
+    def test_replacement_console_starts_with_isolated_current_guide(self):
+        status, body, headers = self.request('/')
+        self.assertEqual(status, 200)
+        self.assertIn(b'src="/preview/" sandbox="allow-scripts', body)
+        self.assertIn(b'<main id="real" hidden>', body)
+        self.assertNotIn('allow-same-origin', body.decode())
+        self.assertNotIn('https://cdn.jsdelivr.net', headers['Content-Security-Policy'])
+
+        status, body, headers = self.request('/preview/')
+        self.assertEqual(status, 200)
+        self.assertIn('摄像头与 ToF'.encode(), body)
+        self.assertIn('保存并重新试站'.encode(), body)
+        csp = headers['Content-Security-Policy']
+        self.assertIn('sandbox allow-scripts', csp)
+        self.assertIn("default-src 'none'", csp)
+        self.assertNotIn('allow-same-origin', csp)
+        self.assertEqual(self.request('/index.html')[0], 404)
+
+        sandbox_headers = {**self.valid_headers(), 'Origin': 'null'}
+        self.assertEqual(self.request('/api/command', {'action': 'relax'}, sandbox_headers)[0], 403)
+        self.service.command.assert_not_called()
+
     def test_cross_origin_missing_token_and_rebinding_are_rejected(self):
         for headers in [{}, {**self.valid_headers(),'Origin':'https://attacker.example'},
                         {**self.valid_headers(),'X-Session-Token':'wrong'},

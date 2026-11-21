@@ -88,3 +88,12 @@ $('center').addEventListener('click', () => { if(confirm(`允许 ${$('joint').va
 $('imu').addEventListener('click', () => { if(confirm('确认当前 IMU 安装方向已按固件要求核验，将保存此确认？')) command({action:'verify-imu',confirmed:$('imu-confirmed').checked}); });
 for (const id of ['supported','unassembled','imu-confirmed']) $(id).addEventListener('change',controls);
 fetch('/api/session').then(r=>r.json()).then(data=>{token=data.token;setInterval(refresh,2000);}).catch(error=>message('本机服务不可用：'+error.message,true));
+
+function showMode(real) {
+  $('guide').hidden = real;
+  $('real').hidden = !real;
+  $('show-guide').setAttribute('aria-pressed', String(!real));
+  $('show-real').setAttribute('aria-pressed', String(real));
+}
+$('show-guide').addEventListener('click', () => showMode(false));
+$('show-real').addEventListener('click', () => showMode(true));

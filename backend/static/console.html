@@ -1,9 +1,17 @@
 <!doctype html>
 <html lang="zh-CN">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MicroDuck 本机调试</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
-<body>
-<header><div><span class="eyebrow">HELLO-MICRODUCK · LOCAL</span><h1>本机实机调试</h1></div><button id="relax" class="danger" disabled>停止并卸力</button></header>
-<main>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MicroDuck 中控台</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<body class="console">
+<header class="console-header">
+  <h1>MicroDuck 中控台</h1>
+  <nav aria-label="中控台模式">
+    <button id="show-guide" type="button" aria-controls="guide" aria-pressed="true">标定向导演示</button>
+    <button id="show-real" type="button" aria-controls="real" aria-pressed="false">本机实机调试</button>
+  </nav>
+  <button id="relax" type="button" class="danger" disabled>停止并卸力</button>
+</header>
+<iframe id="guide" title="MicroDuck 七步标定向导（演示）" src="/preview/" sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer"></iframe>
+<main id="real" hidden>
 <section aria-labelledby="connect-title">
   <h2 id="connect-title">1. 连接机器人</h2>
   <p>本服务通过 SSH 调用机器人已有的 robotd。连接不会启用舵机，也不会安装或切换固件。电脑与机器人需处于同一网络。</p>

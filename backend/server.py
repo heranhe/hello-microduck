@@ -12,6 +12,17 @@ from urllib.parse import urlsplit
 from service import HostKeyRequired, RobotService
 
 STATIC = Path(__file__).with_name('static')
+GUIDE = STATIC.parent.parent / 'tool' / 'calibration.html'
+CONSOLE_CSP = (
+    "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; "
+    "frame-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+)
+GUIDE_CSP = (
+    "sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox; default-src 'none'; "
+    "script-src 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://fonts.googleapis.com; "
+    "font-src https://fonts.gstatic.com; img-src data: blob:; frame-ancestors 'self'; "
+    "base-uri 'none'; form-action 'none'"
+)
 
 
 def make_handler(service, token):
@@ -24,7 +35,7 @@ def make_handler(service, token):
             host = '127.0.0.1:%s' % self.server.server_port
             return self.headers.get('Host') == host and self.headers.get('Sec-Fetch-Site') not in ('cross-site',)
 
-        def reply(self, status, data, kind='application/json; charset=utf-8'):
+        def reply(self, status, data, kind='application/json; charset=utf-8', csp=CONSOLE_CSP):
             raw = data if isinstance(data, bytes) else json.dumps(data, ensure_ascii=False).encode()
             self.send_response(status)
             self.send_header('Content-Type', kind)
@@ -32,7 +43,7 @@ def make_handler(service, token):
             self.send_header('Cache-Control', 'no-store')
             self.send_header('X-Content-Type-Options', 'nosniff')
             self.send_header('Referrer-Policy', 'no-referrer')
-            self.send_header('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
+            self.send_header('Content-Security-Policy', csp)
             self.end_headers()
             self.wfile.write(raw)
 
@@ -42,7 +53,10 @@ def make_handler(service, token):
             path = urlsplit(self.path).path
             if path == '/api/session':
                 return self.reply(200, {'token': token, 'mode': 'real', 'version': '1.0.0'})
-            files = {'/': ('index.html', 'text/html; charset=utf-8'),
+            if path == '/preview/':
+                guide = b'<!doctype html>\n<html lang="zh-CN">\n' + GUIDE.read_bytes()
+                return self.reply(200, guide, 'text/html; charset=utf-8', GUIDE_CSP)
+            files = {'/': ('console.html', 'text/html; charset=utf-8'),
                      '/app.js': ('app.js', 'text/javascript; charset=utf-8'),
                      '/style.css': ('style.css', 'text/css; charset=utf-8')}
             if path not in files:
