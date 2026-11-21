@@ -4,11 +4,13 @@ Written for hello-microduck; no code is copied from the community console.
 The robot daemon remains the only owner of its servo UART.
 """
 import base64
+import errno
 import hashlib
 import json
 import math
 import re
 import shlex
+import socket
 import threading
 import time
 from pathlib import Path
@@ -37,6 +39,37 @@ class HostKeyRequired(Exception):
     def __init__(self, fingerprint):
         self.fingerprint = fingerprint
         super().__init__('请核对机器人 SSH 主机指纹后确认连接')
+
+
+class RobotConnectionError(RuntimeError):
+    """A connection-stage error with actionable text for the local console."""
+
+
+def explain_ssh_failure(error, host, port):
+    from paramiko import AuthenticationException, BadHostKeyException, SSHException
+    from paramiko.ssh_exception import NoValidConnectionsError
+
+    address = f'{host}:{port}'
+    power_check = '先确认机器人主板已通电并完成启动，电脑和机器人在同一局域网，且地址填的是机器人当前的 IP。'
+    if isinstance(error, BadHostKeyException):
+        return f'SSH 主机指纹与保存的记录不一致（{address}）。请先核对 IP 和机器人的主机公钥指纹。'
+    if isinstance(error, AuthenticationException):
+        return f'已连到 {address}，但 SSH 认证失败。请核对 SSH 用户名、登录密码或密钥。'
+    if isinstance(error, socket.gaierror):
+        return f'找不到主机 {host}。{power_check} 如果填的是主机名，可改用机器人当前的 IP。'
+    if isinstance(error, SSHException):
+        return f'未能完成 SSH 协商（{address}）。请确认主板已启动，并核对该端口上运行的是 SSH 服务。\n{error}'
+
+    failures = list(error.errors.values()) if isinstance(error, NoValidConnectionsError) else [error]
+    if any(getattr(failure, 'winerror', None) == 10013 or failure.errno == 10013 for failure in failures):
+        return (f'Windows 拒绝本机调试程序连接 {address}（WinError 10013）。\n{power_check}\n'
+                f'在 PowerShell 中运行 Test-NetConnection {host} -Port {port}。\n'
+                '如果系统 SSH 可以连接，请检查防火墙或安全软件对本机 Python 出站连接的规则。')
+    if any(failure.errno in (errno.EACCES, errno.EPERM) for failure in failures):
+        return f'系统拒绝本机调试程序连接 {address}。\n{power_check}\n请检查本机的网络访问规则。'
+    if failures and all(failure.errno in (errno.ECONNREFUSED, 10061) for failure in failures):
+        return f'SSH 端口 {address} 拒绝连接。\n{power_check}\n请确认机器人已启用 SSH，且端口填写正确。'
+    return f'无法连接机器人 SSH（{address}）。\n{power_check}\n请再检查 SSH 服务和端口。'
 
 
 def fingerprint(key):
@@ -97,14 +130,22 @@ class RobotService:
 
         client.set_missing_host_key_policy(VerifyKey())
         try:
-            client.connect(host, port=port, username=user, password=password or None,
-                           allow_agent=not bool(password), look_for_keys=not bool(password),
-                           timeout=8, auth_timeout=10, banner_timeout=8)
-            client.get_transport().set_keepalive(10)
+            try:
+                client.connect(host, port=port, username=user, password=password or None,
+                               allow_agent=not bool(password), look_for_keys=not bool(password),
+                               timeout=8, auth_timeout=10, banner_timeout=8)
+            except (OSError, paramiko.SSHException) as error:
+                raise RobotConnectionError(explain_ssh_failure(error, host, port)) from error
             # Connection is reported only after a real robotd request succeeds.
-            report = self._rpc(client, path, 'robot.busStatus', {})
-            if not isinstance(report, dict):
-                raise RuntimeError('robotd 返回了无效总线状态')
+            try:
+                client.get_transport().set_keepalive(10)
+                report = self._rpc(client, path, 'robot.busStatus', {})
+                if not isinstance(report, dict):
+                    raise RuntimeError('robotd 返回了无效总线状态')
+            except (OSError, RuntimeError, ValueError, paramiko.SSHException) as error:
+                raise RobotConnectionError(
+                    f'SSH 已登录，但读取 robotd 失败。请检查机器人上的 robotd 服务和套接字 {path}。\n{error}'
+                ) from error
             if new_keys:
                 self.known_hosts.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
                 for hostname, key in new_keys:

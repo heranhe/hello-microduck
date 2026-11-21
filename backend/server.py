@@ -10,7 +10,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from service import HostKeyRequired, RobotService
+from service import HostKeyRequired, RobotConnectionError, RobotService
 
 STATIC = Path(__file__).with_name('static')
 GUIDE = STATIC.parent.parent / 'tool' / 'calibration.html'
@@ -97,6 +97,8 @@ def make_handler(service, token):
                 self.reply(200, {'result': routes[self.path](data)})
             except HostKeyRequired as error:
                 self.reply(409, {'error': str(error), 'fingerprint': error.fingerprint})
+            except RobotConnectionError as error:
+                self.reply(502, {'error': str(error)})
             except ValueError as error:
                 self.reply(400, {'error': str(error)})
             except Exception as error:

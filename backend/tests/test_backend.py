@@ -1,3 +1,4 @@
+import errno
 import io
 import json
 import socket
@@ -11,7 +12,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from service import HostKeyRequired, JOINTS, REMOTE, RobotService, fingerprint
+from service import HostKeyRequired, JOINTS, REMOTE, RobotConnectionError, RobotService, fingerprint
 from server import make_handler
 from http.server import ThreadingHTTPServer
 
@@ -141,8 +142,39 @@ class HostKeyTests(unittest.TestCase):
         client.connect.side_effect=lambda host,**kw:client.set_missing_host_key_policy.call_args.args[0].missing_host_key(client,host,key)
         with tempfile.TemporaryDirectory() as tmp, patch('paramiko.SSHClient',return_value=client):
             path=Path(tmp)/'known_hosts';service=RobotService(path);service._rpc=Mock(side_effect=RuntimeError('no socket'))
-            with self.assertRaises(RuntimeError):service.connect({'target':'radxa@duck.local','fingerprint':fingerprint(key)})
+            with self.assertRaisesRegex(RobotConnectionError, 'SSH 已登录，但读取 robotd 失败'):
+                service.connect({'target':'radxa@duck.local','fingerprint':fingerprint(key)})
             self.assertFalse(path.exists());self.assertIsNone(service.client);client.close.assert_called()
+
+
+class ConnectionErrorTests(unittest.TestCase):
+    def test_ssh_failures_explain_the_stage_and_only_suggest_power_checks_when_relevant(self):
+        import paramiko
+        from paramiko.ssh_exception import NoValidConnectionsError
+
+        windows_error = PermissionError(errno.EACCES, 'access denied')
+        windows_error.winerror = 10013
+        address = ('192.168.31.37', 22)
+        cases = [
+            (windows_error, 'WinError 10013', True),
+            (NoValidConnectionsError({address: windows_error}), 'WinError 10013', True),
+            (NoValidConnectionsError({address: ConnectionRefusedError(errno.ECONNREFUSED, 'refused')}), '拒绝连接', True),
+            (socket.timeout('timed out'), '无法连接机器人 SSH', True),
+            (socket.gaierror(socket.EAI_NONAME, 'unknown host'), '找不到主机', True),
+            (paramiko.AuthenticationException('invalid credentials'), 'SSH 认证失败', False),
+        ]
+        for failure, expected, power_check in cases:
+            with self.subTest(expected=expected), patch('paramiko.SSHClient') as factory:
+                client = factory.return_value
+                client.connect.side_effect = failure
+                service = RobotService()
+                service._rpc = Mock()
+                with self.assertRaisesRegex(RobotConnectionError, expected) as raised:
+                    service.connect({'target': 'radxa@192.168.31.37'})
+                self.assertEqual('主板已通电' in str(raised.exception), power_check)
+                client.close.assert_called_once()
+                service._rpc.assert_not_called()
+                self.assertIsNone(service.client)
 
 
 class HTTPTests(unittest.TestCase):
@@ -211,6 +243,12 @@ class HTTPTests(unittest.TestCase):
         status,body,_=self.request('/api/command',{'action':'relax'},self.valid_headers())
         self.assertEqual(status,502);self.assertIn('firmware method unavailable',json.loads(body)['error'])
         self.service.command.assert_called_once()
+
+    def test_connect_forwards_actionable_error_without_internal_exception_prefix(self):
+        self.service.connect.side_effect = RobotConnectionError('连接失败。请检查主板是否通电。')
+        status, body, _ = self.request('/api/connect', {'target':'radxa@duck.local'}, self.valid_headers())
+        self.assertEqual(status, 502)
+        self.assertEqual(json.loads(body), {'error':'连接失败。请检查主板是否通电。'})
 
 
 if __name__=='__main__':unittest.main()

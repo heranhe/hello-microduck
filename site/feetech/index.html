@@ -442,8 +442,8 @@
 <p><a class="btn main" href="../downloads/hello-microduck-local.zip" download>下载本机调试包 ↧</a> <a class="btn" href="#local-debug">查看安装步骤 ↓</a></p>
 
 <div class="note">
-  <b>本机调试和在线演示使用不同入口</b>
-  <p>本机后台显示真实 SSH 与 robotd 数据。本站的七步页面是模拟流程，用于熟悉操作；它不连接本机后台，不会写入机器人，也不要在演示页填真实密码。</p>
+  <b>本机向导默认连接实机</b>
+  <p>启动本机调试包后，在七步向导首页填写真实 SSH 账户。右上角「体验演示」可切换到模拟数据。本站的在线预览仅提供演示，真实密码请只在本机实机模式输入。</p>
 </div>
 
 <h3 id="local-debug">在自己的电脑上部署</h3>
@@ -458,6 +458,13 @@
 cd hello-microduck
 bash start.command</code></pre>
 <p><a href="https://github.com/heranhe/hello-microduck/tree/main/backend" target="_blank" rel="noopener">后台源码、手动安装与固件接口说明 ↗</a> · <a href="../downloads/SHA256SUMS.txt" target="_blank" rel="noopener">下载包 SHA-256 校验 ↗</a></p>
+<h4 id="ssh-troubleshooting">SSH 连不上怎么办？</h4>
+<ol class="how">
+  <li><b>先检查主板：</b>确认机器人主板已经通电并完成启动。确认电脑和机器人在同一局域网，再从路由器或机器人上获取当前 IP，填入中控台。</li>
+  <li><b>Windows 提示 WinError 10013：</b>在 PowerShell 运行 <code>Test-NetConnection &lt;机器人IP&gt; -Port 22</code>，把 <code>&lt;机器人IP&gt;</code> 替换为实际地址。如果命令行 SSH 能登录而中控台仍失败，请检查防火墙或安全软件对中控台 Python 的出站连接规则。</li>
+  <li><b>按提示核对下一项：</b>连接被拒绝时检查 SSH 服务和端口。出现认证失败时核对用户名、密码或密钥。SSH 登录成功但读取 robotd 失败时，检查机器人的 robotd 服务和 socket 路径。</li>
+  <li><b>已连接但舵机无读数：</b><code>motion</code> 和 <code>commissioning</code> 模式都可以读舵机反馈。确认使用新版下载包。如果仍无读数，请检查舵机供电、总线接线和固件状态。写入标定需要按固件说明进入 <code>commissioning</code> 并确认卸力。</li>
+</ol>
 <div class="note warn">
   <b>真实功能与验收范围</b>
   <p>后台已实现真实 SSH、总线/IMU 原始反馈、标定读取与单关节写入、IMU 安装确认、卸力、单颗回中位。目前只通过协议夹具和自动测试验证，还没有在真实机器人上验收；首次使用先核对固件和只读反馈。摄像头视频、ToF 服务、手柄配对和行走策略未接入这个后台。</p>

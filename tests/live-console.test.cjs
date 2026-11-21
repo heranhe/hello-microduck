@@ -74,3 +74,26 @@ test('demo switch stays in the same UI, clears the unsubmitted password and perf
   assert.equal(run('live.mode'), true);
   assert.deepEqual(requests, []);
 });
+
+test('motion mode reads native joint positions without a commissioning last_sample', () => {
+  const {run} = fixture();
+  run(`liveAccept({connected:true, bus:{mode:'motion', phase:'control', fresh_sample:true, native:{
+    sample_age_ms:20, torque_state_confirmed:true, joints:[
+      {id:20, name:J[0].key, position_raw:2013, position_rad:0.125, volts:7.3, temperature_c:29, feedback_fresh:true, sample_age_ms:20}
+    ]
+  }}})`);
+  assert.equal(run('liveServo(J[0]).position_raw'), 2013);
+  assert.equal(run('liveServo(J[0]).volts'), 7.3);
+  assert.equal(run('livePose()[J[0].key]'), 0.125);
+  assert.equal(run('liveTorqueLabel()'), '已上力');
+  assert.equal(run('liveMotorReady()'), false);
+
+  run('live.report.bus.native.joints[0].feedback_fresh = false');
+  assert.equal(run('liveServo(J[0])'), null);
+  run('live.report.bus.native.joints[0].feedback_fresh = true; live.report.bus.native.joints[0].sample_age_ms = 501');
+  assert.equal(run('liveServo(J[0])'), null);
+  run('live.report.bus.native.joints[0].sample_age_ms = 20; live.report.bus.fresh_sample = false');
+  assert.equal(run('liveServo(J[0])'), null);
+  run('live.report.bus.fresh_sample = true; live.report.bus.native.sample_age_ms = null');
+  assert.equal(run('liveServo(J[0])'), null);
+});

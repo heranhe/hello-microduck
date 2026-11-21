@@ -228,6 +228,8 @@ SH1.0 那头插到 **J5**，1 号脚在靠近 J6 的一侧。
 
 **下载部署：**完整解压[本机调试包](https://hello-microduck.pages.dev/downloads/hello-microduck-local.zip)，安装 Python 3.9+。macOS 双击 `start.command`（或执行 `bash start.command`），Windows 双击 `start.cmd`（需 Python Launcher），Linux 执行 `bash start.command`。首次启动联网安装 Paramiko，随后打开 <http://127.0.0.1:8098/>。在首页填写机器人 SSH 地址、密码或使用已配置的密钥，再点击「连接并读取状态」。
 
+**连接失败时，先确认机器人主板已通电并完成启动。** 检查电脑与机器人的局域网连接和机器人当前 IP，再根据提示检查 SSH 端口、认证或 robotd。[网页教程的连接排查](https://hello-microduck.pages.dev/feetech/#ssh-troubleshooting)
+
 机器人需已有支持 `robot.busStatus` / `robot.busCommand` 的飞特版 robotd，默认 socket `/run/robotd.sock`；标定写入要求机器人处于 `commissioning` 模式，按固件说明准备。首次 SSH 连接需核对主机指纹；密码不保存。**本次完成协议夹具与自动测试，尚未进行真实机器人验收**，先核对固件和只读反馈再操作。摄像头、ToF、手柄与行走尚未接入本后台。
 
 [在线七步预览](https://hello-microduck.pages.dev/tool/)使用同一套界面，仅提供模拟演示。

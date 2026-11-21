@@ -20,6 +20,8 @@ backend/.venv/bin/python backend/server.py --no-browser
 
 Windows 手动运行时，将解释器路径替换为 `backend\.venv\Scripts\python.exe`。
 
+如果连接失败，先确认机器人主板已通电并完成启动，再核对它在路由器上显示的当前 IP。Windows 提示 `WinError 10013` 时，可在 PowerShell 中运行 `Test-NetConnection <机器人IP> -Port 22`。如果命令行 SSH 能登录而中控台仍失败，请检查防火墙或安全软件对 `backend\.venv\Scripts\python.exe` 的出站连接规则。
+
 ## 机器人端要求
 
 机器人需有 Python 3、SSH 和支持下列 JSON-RPC 方法的飞特版 robotd，默认 Unix socket 为 `/run/robotd.sock`：
@@ -34,7 +36,7 @@ SSH 登录用户必须具有访问该 Unix socket 的权限。如果提示 Permi
 
 ## 真实功能和边界
 
-1. 连接先读取 robotd 总线状态，成功才显示已连接；显示实时位置、温度、电压、IMU 原始反馈和已保存标定。
+1. 连接先读取 robotd 总线状态，成功才显示已连接。运动模式读取固件的原生舵机快照，标定模式读取标定采样。两种模式均显示有效的位置、温度、电压和已保存标定。IMU 重力方向请在标定模式查看。
 2. 单关节标定：支撑机身、停止运动、卸力并手摆到已知角度；填写实测方向和限位。后台检查反馈，robotd 再校验并写入机器人配置的标定文件；其他关节保留。
 3. 单颗回中位：只对已配置的 ID 操作，必须确认已拆下舵盘并脱离骨架，2 秒移至 2048。此操作会真实运动。装配偏移按该关节说明处理，2048 不是所有关节的标定零位。
 4. IMU：展示真实原始反馈、允许保存已经人工核验的安装确认，不自动估算安装四元数。

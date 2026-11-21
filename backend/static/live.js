@@ -27,15 +27,38 @@ const liveConnected = () => live.report?.connected === true;
 const liveSample = () => live.report?.bus?.last_sample;
 const liveCalibration = () => live.report?.calibration?.calibration;
 const liveSaved = joint => liveCalibration()?.joints?.find(row => row.id === joint.id && row.calibrated);
+const liveNative = () => live.report?.bus?.native || live.report?.bus;
+const feedbackMaxAgeMs = 500;
+
 function liveFresh() {
-  const sample = liveSample();
-  const age = live.report?.bus?.updated_at_us - sample?.at_us;
-  return Number.isFinite(age) && age >= 0 && age <= 500000 && Date.now() - live.receivedAt < 5500;
+  const bus = live.report?.bus;
+  if (!liveConnected() || !bus || Date.now() - live.receivedAt >= 5500) return false;
+  if (bus.mode === 'motion') {
+    const age = liveNative()?.sample_age_ms;
+    return bus.phase === 'control' && bus.fresh_sample !== false && Number.isFinite(age) && age >= 0 && age <= feedbackMaxAgeMs;
+  }
+  const age = (bus.updated_at_us - liveSample()?.at_us) / 1000;
+  return Number.isFinite(age) && age >= 0 && age <= feedbackMaxAgeMs;
 }
+
 function liveServo(joint) {
-  const row = liveSample()?.servos?.find(item => item.id === joint.id && (item.joint || item.name) === joint.key);
-  return Number.isInteger(row?.position_raw) ? row : null;
+  if (!liveFresh()) return null;
+  const motionMode = live.report.bus.mode === 'motion';
+  const rows = motionMode ? liveNative()?.joints : liveSample()?.servos;
+  if (!Array.isArray(rows)) return null;
+  const row = rows.find(item => item?.id === joint.id && (item.joint || item.name) === joint.key);
+  if (!Number.isInteger(row?.position_raw)) return null;
+  if (motionMode && (row.feedback_fresh === false || row.sample_age_ms > feedbackMaxAgeMs)) return null;
+  return row;
 }
+
+function liveTorqueLabel() {
+  const bus = live.report?.bus;
+  if (bus?.mode !== 'motion') return bus?.torque_state || '未知';
+  const confirmed = liveNative()?.torque_state_confirmed;
+  return confirmed === true ? '已上力' : confirmed === false ? '已卸力' : '未确认';
+}
+
 function liveMotorReady() {
   const bus = live.report?.bus;
   return liveConnected() && liveFresh() && bus.mode === 'commissioning' && bus.torque_state === 'off'
@@ -43,7 +66,8 @@ function liveMotorReady() {
 }
 function livePose() {
   return Object.fromEntries(J.map(joint => {
-    const saved = liveSaved(joint), row = liveFresh() ? liveServo(joint) : null;
+    const saved = liveSaved(joint), row = liveServo(joint);
+    if (Number.isFinite(row?.position_rad)) return [joint.key, row.position_rad];
     const angle = saved && row ? saved.direction * (row.position_raw - saved.zero_raw) * K : 0;
     return [joint.key, Number.isFinite(angle) ? angle : 0];
   }));
@@ -172,7 +196,7 @@ function liveSelect(key) {
 
 function liveConnectionPanel() {
   if (liveConnected()) return html`<h1>已连接机器人</h1><p class="say">${live.target}</p><div class="spring"></div><button class="btn main" data-a="liveStep" data-k="check">检查舵机</button><button class="link" data-a="liveDisconnect" data-idle>断开 SSH</button>`;
-  return html`<h1>连接 MicroDuck</h1><p class="say">让电脑和机器人连到同一个网络，填写机器人 SSH 账户。</p>
+  return html`<h1>连接 MicroDuck</h1><p class="say">确认机器人主板已通电并完成启动，电脑和机器人在同一局域网，再填写机器人 SSH 账户。</p>
     <form id="live-connection" class="stack">
       <div class="field"><label for="live-target">SSH 地址</label><input name="target" id="live-target" value="${live.target}" autocomplete="username" autocapitalize="off" spellcheck="false" required></div>
       <div class="field"><label for="live-password">SSH 密码</label><input name="password" id="live-password" type="password" autocomplete="current-password" placeholder="已配置密钥时可留空"></div>
@@ -237,7 +261,7 @@ function liveRenderRail() {
   mount($('rail'), html`${STEP_KEYS.map((key, i) => {
     const current = live.step === key;
     const skipped = live.visited.has(key);
-    const done = key === 'connect' ? liveConnected() : key === 'check' ? liveFresh() && J.every(liveServo) : key === 'pose' ? J.every(liveSaved) : key === 'imu' && liveCalibration()?.imu_mount_verified === true;
+    const done = key === 'connect' ? liveConnected() : key === 'check' ? J.every(liveServo) : key === 'pose' ? J.every(liveSaved) : key === 'imu' && liveCalibration()?.imu_mount_verified === true;
     return html`<li class="${current ? 'now' : done ? 'done' : skipped ? 'skipped' : ''}"><button class="rb" data-a="liveStep" data-k="${key}" ${current ? new Safe('aria-current="step"') : ''} aria-label="${STEPS[i]}${skipped ? '，已跳过' : ''}"><i>${done && !current ? '✓' : skipped && !current ? '−' : i+1}</i><span>${STEPS[i]}${OPTIONAL.has(key) ? html`<small>可选</small>` : ''}</span></button></li>`;
   })}`);
 }
@@ -263,23 +287,30 @@ function liveUpdate() {
   for (const button of document.querySelectorAll('[data-live-write]')) button.disabled = live.busy || live.relaxing || !liveMotorReady();
   const fresh = liveFresh();
   for (const element of document.querySelectorAll('[data-live-position]')) {
-    const row = fresh && liveServo(BY[element.dataset.livePosition]);
+    const row = liveServo(BY[element.dataset.livePosition]);
     element.textContent = row ? row.position_raw : '—';
     element.closest('button').classList.toggle('ok', Boolean(row));
   }
   const count = $('live-count');
-  if (count) count.textContent = fresh ? `${J.filter(liveServo).length} / ${J.length} 颗有实时反馈 · 扭矩 ${bus.torque_state || '未知'}` : '等待有效总线反馈。请检查连接和舵机供电。';
+  if (count) {
+    const online = J.filter(liveServo).length;
+    count.textContent = online ? `${online} / ${J.length} 颗有实时反馈 · 扭矩 ${liveTorqueLabel()}`
+      : '主板已连接，暂无有效舵机反馈。请检查舵机供电、总线接线和固件运行状态。';
+  }
   const detail = $('live-detail');
   if (detail && live.selected) {
-    const joint = BY[live.selected], saved = liveSaved(joint), row = fresh && liveServo(joint);
-    detail.textContent = `${row ? `位置 ${row.position_raw} · ${row.voltage_v ?? '—'} V · ${row.temperature_c ?? '—'} °C` : '等候有效位置反馈'} · ${saved ? `已保存零位 ${saved.zero_raw} / 方向 ${saved.direction}` : '尚未回读到标定'}`;
+    const joint = BY[live.selected], saved = liveSaved(joint), row = liveServo(joint);
+    detail.textContent = `${row ? `位置 ${row.position_raw} · ${row.voltage_v ?? row.volts ?? '—'} V · ${row.temperature_c ?? '—'} °C` : '等候有效位置反馈'} · ${saved ? `已保存零位 ${saved.zero_raw} / 方向 ${saved.direction}` : '尚未回读到标定'}`;
   }
   const imu = $('live-imu');
   if (imu) {
     const data = fresh && liveSample()?.imu;
-    imu.textContent = data ? `IMU ${data.valid && data.ready ? '就绪' : '未就绪'} · 安装 ${data.mount_verified ? '已确认' : '待确认'}\n重力 XYZ：${data.gravity?.map(value => value.toFixed(3)).join(' / ') || '—'}` : '等候有效 IMU 反馈';
+    imu.textContent = data ? `IMU ${data.valid && data.ready ? '就绪' : '未就绪'} · 安装 ${data.mount_verified ? '已确认' : '待确认'}\n重力 XYZ：${data.gravity?.map(value => value.toFixed(3)).join(' / ') || '—'}` : bus?.mode === 'motion'
+      ? '当前处于运动模式。核对 IMU 的重力方向及写入安装确认，请按固件说明进入 commissioning 标定模式。' : '等候有效 IMU 反馈';
   }
-  if ($('live-ready')) $('live-ready').textContent = liveMotorReady() ? '标定模式 · 已确认卸力' : '写入需要新鲜反馈、commissioning 标定模式及已确认卸力。';
+  if ($('live-ready')) $('live-ready').textContent = liveMotorReady() ? '标定模式 · 已确认卸力' : bus?.mode === 'motion'
+    ? '运动模式可查看实时舵机反馈。写入前请按固件说明进入 commissioning 标定模式并确认卸力。'
+    : '写入需要新鲜反馈、commissioning 标定模式及已确认卸力。';
   if ($('live-results')) $('live-results').textContent = `${J.filter(liveSaved).length} / ${J.length} 颗关节已保存标定。IMU 安装${liveCalibration()?.imu_mount_verified ? '已确认' : '待确认'}。`;
 }
 
