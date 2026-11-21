@@ -8,9 +8,9 @@
   <h2 id="connect-title">1. 连接机器人</h2>
   <p>本服务通过 SSH 调用机器人已有的 robotd。连接不会启用舵机，也不会安装或切换固件。电脑与机器人需处于同一网络。</p>
   <form id="connection">
-    <label>SSH 地址<input name="target" value="radxa@microduck.local" required autocomplete="off" spellcheck="false"></label>
+    <label>SSH 地址<input name="target" value="radxa@192.168.31.37" required autocomplete="username" spellcheck="false"></label>
     <label>SSH 端口<input name="port" type="number" value="22" min="1" max="65535" required></label>
-    <label>SSH 密码<input name="password" type="password" autocomplete="off" placeholder="已配置密钥时留空"></label>
+    <label>SSH 密码<input name="password" type="password" autocomplete="current-password" placeholder="已配置密钥时留空"></label>
     <label>robotd socket<input name="socket" value="/run/robotd.sock" required spellcheck="false"></label>
     <div class="row"><button type="submit">连接并读取状态</button><button type="button" id="disconnect" disabled>断开 SSH</button></div>
     <div id="host-key" hidden><p>首次连接：请与机器人终端中的 SSH 主机公钥指纹核对，确认是自己的设备。</p><code id="fingerprint"></code><button type="button" id="trust">指纹一致，连接此设备</button></div>
