@@ -369,14 +369,19 @@ ul.plain li.go::before{content:"…";color:var(--act)}
 .diagnostic-choices .chosen{border-color:var(--hot);color:var(--hot)}
 @media(max-width:1180px){#rail{flex-basis:100%;order:3;justify-content:flex-start;overflow:auto;flex-wrap:nowrap;padding-bottom:4px}#rail .rb{flex:none}.hr{margin-left:auto}}
 
+.live-options{margin-top:10px}.live-data{white-space:pre-wrap;overflow:auto;max-height:240px;font:12px/1.6 var(--mono);color:var(--muted)}
+#mode-toggle,#live-relax{white-space:nowrap}.hr{margin-left:auto;gap:10px}
+#mode-toggle{padding:5px 8px;text-decoration:none;border:1px solid var(--line);color:var(--ink)}
+#live-relax{color:var(--bad)}#live-relax:disabled{opacity:.4;cursor:default}
+@media(max-width:420px){.brandbox{flex:1 1 100%}.hr{flex-wrap:wrap;justify-content:flex-end}}
 </style>
 
 <div id="app">
   <header>
-    <div class="brandbox"><div class="brandrow"><b>MicroDuck 标定 · 演示</b><button class="unoff" data-a="about" title="这是非官方演示，点开看说明">非官方</button></div>
+    <div class="brandbox"><div class="brandrow"><b id="mode-brand">MicroDuck 标定 · 演示</b><button class="unoff" data-a="about" title="这是非官方工具，点开看说明">非官方</button></div>
       <div class="ghrow"><span>训练个性化动作</span><a class="ghbtn" href="https://github.com/heranhe/microduck-lab-cloud" target="_blank" rel="noopener" title="打开我的训练实验室：训练、世界模拟、动作编辑和云端 GPU">GitHub ↗</a></div></div>
     <ol id="rail" aria-label="标定进度"></ol>
-    <div class="hr"><span id="link"></span><button class="link" data-a="adv">高级模式</button></div>
+    <div class="hr"><span id="link"></span><button class="link" data-a="adv">高级模式</button><button class="link" id="live-relax" data-a="liveRelax" hidden disabled>停止并卸力</button><button class="link" id="mode-toggle" data-a="liveToggle" hidden>体验演示</button></div>
   </header>
   <main>
     <div id="stageWrap">
@@ -865,7 +870,8 @@ const blank=html`<span></span>`;
 const aboutNote=html`<p class="aboutnote">非官方工具，与 Pollen Robotics 无关，只使用开源项目和本页作者自己写的代码。<button class="link" data-a="about">详细说明</button></p>`;
 const foot=(left=blank)=>html`<div class="foot">${left}</div>`;
 const scanState=j=>{const i=J.indexOf(j);if(i>=S.scan)return'';return S.fault==='offline'&&j.id===23?'bad':'ok'};
-const selKey=()=>S.pin;
+const inLiveMode=()=>typeof live!=='undefined'&&live.mode;
+const selKey=()=>inLiveMode()?live.selected:S.pin;
 const offList=()=>J.filter(j=>scanState(j)==='bad'); // 没有回应的舵机
 function servoRow(j){
   const st=scanState(j),warn=st==='ok'&&nearEnd(bus[j.key].last,j);
@@ -951,7 +957,7 @@ function panelBody(){
     const C=S.conn,ST=['找到 MicroDuck','登录主控','读取固件版本'];
     if(C.up&&C.sub!=='busy')return html`<h1>已连接</h1><p class="say">${C.addr}</p><ul class="plain"><li>MicroDuck 主控在线</li></ul><div class="spring"></div><button class="btn main" data-a="advance" data-primary>继续</button>${foot(html`<button class="link" data-a="reconnect">换一台或重新连接</button>`)}${aboutNote}`;
     if(C.sub==='busy')return html`<h1>正在连接</h1><ul class="plain">${ST.map((s,i)=>html`<li class="${i<C.stage?'':i===C.stage?'go':'wait'}">${s}</li>`)}</ul><div class="spring"></div>`;
-    return html`<h1>预览连接流程</h1><div class="note warn"><strong>当前为演示，不连接真机</strong>无需机器人，请勿填写真实 SSH 密码。${location.pathname==='/preview/'?'要连接机器人，请点击中控台顶部「本机实机调试」。':html`要连接机器人，请先运行本机中控台。<a href="../feetech/#local-debug">下载中控台与查看部署说明 ↗</a>`}</div><p class="say">保留示例地址，点击下方按钮体验模拟连接。</p>
+    return html`<h1>预览连接流程</h1><div class="note warn"><strong>当前为演示，不连接真机</strong>无需机器人，请勿填写真实 SSH 密码。${typeof live!=='undefined'?'要连接机器人，请点击中控台右上角「返回实机调试」。':html`要连接机器人，请先运行本机中控台。<a href="../feetech/#local-debug">下载中控台与查看部署说明 ↗</a>`}</div><p class="say">保留示例地址，点击下方按钮体验模拟连接。</p>
     ${C.err?html`<div class="note bad"><strong>${C.err[0]}</strong>${C.err[1]}</div>`:''}
     <div class="field"><label for="sshAddr">SSH 地址（用户名@MicroDuck 的 IP）</label><input id="sshAddr" value="${C.addr}" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
     <div class="field"><label for="sshPass">演示密码（留空，不填真实密码）</label><input id="sshPass" type="password" autocomplete="off"></div>
@@ -1035,6 +1041,14 @@ function panelBody(){
 }
 let lastStep=null;
 function render(){
+  if(typeof live!=='undefined'){
+    $('mode-brand').textContent=live.mode?'MicroDuck 标定 · 实机':'MicroDuck 标定 · 演示';
+    $('mode-toggle').hidden=false;
+    $('mode-toggle').textContent=live.mode?'体验演示':'返回实机调试';
+    $('live-relax').hidden=!live.mode&&!liveConnected();
+    if(live.mode){liveRender();return}
+    $('dock').hidden=false;
+  }
   mount($('rail'),html`${STEPS.map((t,i)=>{const k=STEP_KEYS[i],now=i===stepNo(),done=isDone(k),skipped=isSkipped(k),lock=!now&&!done&&missing(k).length>0;
     return html`<li class="${now?'now':done?'done':skipped?'skipped':''}${lock?' lock':''}"><button class="rb" data-a="go" data-s="${i}" aria-label="${t}，${now?'当前步骤':done?'已完成':skipped?skipLabel(k):'待完成'}${OPTIONAL.has(k)?'，可选':''}" ${now?new Safe('aria-current="step"'):''}><i>${done&&!now?'✓':skipped&&!now?'−':i+1}</i><span>${t}${OPTIONAL.has(k)?html`<small>${skipped?skipLabel(k):'可选'}</small>`:''}</span></button></li>`})}`);
   if(S.step!==lastStep){S.pin=S.tune?.key||S.recal?.key||null;S.hover=null;lastStep=S.step}
@@ -1185,6 +1199,15 @@ const act={
 let padTimer=0;
 window.addEventListener('beforeunload',e=>{if(tuneDirty()){e.preventDefault();e.returnValue=''}});
 document.addEventListener('click',e=>{
+  const modeAction=e.target.closest('[data-a]');
+  if(typeof live!=='undefined'&&modeAction?.dataset.a==='liveToggle'){liveToggle();return}
+  if(typeof live!=='undefined'&&modeAction?.dataset.a==='liveRelax'){if(!modeAction.disabled)liveHandleClick(modeAction);return}
+  if(inLiveMode()){
+    const servo=e.target.closest('[data-j]');
+    if(servo){liveSelect(servo.dataset.j);return}
+    if(modeAction&&!modeAction.disabled)liveHandleClick(modeAction);
+    return;
+  }
   const sv=e.target.closest('[data-j]');
   if(sv){if(S.recal)return;if(S.step==='stand'&&['pick','tune'].includes(S.standSub)){openTune(sv.dataset.j);return}S.pin=S.pin===sv.dataset.j?null:sv.dataset.j;applySel();return}
   if(S.pin&&!S.tune&&!S.recal&&e.target.tagName!=='CANVAS'&&!e.target.closest('#idSwitch,dialog')){S.pin=null;applySel()}
@@ -1193,15 +1216,16 @@ document.addEventListener('click',e=>{
   if(p){padPress(p.dataset.pad);return}
   const b=e.target.closest('[data-a]');if(!b||b.disabled)return;if(isBusy()&&!['relax'].includes(b.dataset.a))return;initAudio();const f=act[b.dataset.a];if(f)f(b);
 });
+document.addEventListener('submit',e=>{if(inLiveMode())liveHandleSubmit(e)});
 document.addEventListener('change',e=>{
   if(e.target.id==='fault'){const v=e.target.value;setFault(v);if(S.step==='check')scanStart();else render()}
   if(e.target.id==='trimSupport'&&S.tune){S.tune.supported=e.target.checked;render()}
   if(e.target.id==='recalSupport'&&S.recal){S.recal.supported=e.target.checked;render()}
   if(e.target.id==='idToggle'){labelsOn=e.target.checked;render()}
 });
-document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.closest('.field'))$('panel').querySelector('[data-primary]')?.click()});
+document.addEventListener('keydown',e=>{if(!inLiveMode()&&e.key==='Enter'&&e.target.closest('.field'))$('panel').querySelector('[data-primary]')?.click()});
 document.addEventListener('input',e=>{if(e.target.id==='sshAddr')S.conn.addr=e.target.value;if(e.target.id==='hand'){initAudio();const k=driveKey(),v=+e.target.value/100;sim.script=[];sim.q[k]=v>=0?v*sim.hi[k]:-v*sim.lo[k]}});
-document.addEventListener('keydown',e=>{if(e.code!=='Space'||e.target.closest('button,select,input,textarea,dialog'))return;const b=document.querySelector('[data-primary]');if(b){e.preventDefault();b.click()}});
+document.addEventListener('keydown',e=>{if(inLiveMode()||e.code!=='Space'||e.target.closest('button,select,input,textarea,dialog'))return;const b=document.querySelector('[data-primary]');if(b){e.preventDefault();b.click()}});
 function showSel(){
   const k=selKey(),el=$('selLine');
   document.querySelectorAll('.sv').forEach(b=>b.classList.toggle('hot',b.dataset.j===k));
@@ -1297,6 +1321,7 @@ function initLabels(){
   });
 }
 function labelSet(){
+  if(inLiveMode())return ['check','pose'].includes(live.step)?J:[];
   if(S.step==='check')return J;
   if(S.step==='connect')return[];
   if(S.step==='pose')return inZone(ZONES[S.zoneI].k);
@@ -1306,7 +1331,7 @@ function labelSet(){
   return[];
 }
 let v3=null;
-function labelVisible(j){return S.step!=='check'||J.indexOf(j)<S.scan}
+function labelVisible(j){return inLiveMode()||S.step!=='check'||J.indexOf(j)<S.scan}
 function drawLabels(){
   const set=labelSet().filter(labelVisible),layer=$('idLayer');
   $('idSwitch').hidden=!R||!NODES.mouth||!labelSet().length;
@@ -1347,8 +1372,8 @@ function drawLabels(){
     const L=LB[j.key];
     if(!on.has(j.key)){L.pill.classList.add('off');L.line.setAttribute('class','off');L.dot.setAttribute('class','off');return}
     const q=pts.find(p=>p.j===j),bad=(S.step==='check'&&!S.scanning&&scanState(j)==='bad')||(S.tryBad&&S.tryBad===j)||(S.poseErr&&S.poseErr.j===j)||(S.step==='pose'&&S.zero[j.key]==null&&rangeIssue(j,bus[j.key].last,S.cal[j.key]));
-    const hot=sel===j.key||(S.step==='stand'&&S.manual===j.key)||(S.step==='follow'&&curJ()===j);
-    const c=hot?'hot':bad?'bad':'';
+    const hot=sel===j.key||(!inLiveMode()&&((S.step==='stand'&&S.manual===j.key)||(S.step==='follow'&&curJ()===j)));
+    const c=hot?'hot':bad&&!inLiveMode()?'bad':'';
     L.pill.className=`pill ${c}`;
     L.pill.style.transform=`translate(${q.px}px,${q.py}px)`;
     L.line.setAttribute('class',c);L.dot.setAttribute('class',c);
@@ -1474,6 +1499,7 @@ function castServo(ev){
   return hit&&hit.object.userData.servo?hit.object.userData.servo:null;
 }
 function stagePick(ev){
+  if(inLiveMode()){if(['check','pose'].includes(live.step))liveSelect(castServo(ev));return}
   if(S.step!=='check'&&S.step!=='pose'&&!(S.step==='stand'&&['pick','tune','recal'].includes(S.standSub)))return;
   if(S.step==='check'&&S.scanning)return;
   const k=castServo(ev);
@@ -1544,6 +1570,15 @@ const CAM={all:{az:.62,el:.14,ty:.125,zoom:.84},left:{az:2.45,el:.12,ty:.125,zoo
 function updateScene(){
   if(!R||!NODES.mouth)return;
   const L={ghost:false};let cz='all';const sel=selKey();
+  if(inLiveMode()){
+    if(sel&&['check','pose'].includes(live.step)){
+      cz=BY[sel].zone;L.ghost=true;L.hot=[sel];L.mid=chain([sel]);
+    }else if(['imu','sensors'].includes(live.step))cz='head';
+    setLook(L);
+    if(cz!==lastCz){Object.assign(view.tgt,CAM[cz]);view.az=0;view.el=0;lastCz=cz}
+    $('stageTag').textContent='3D 关节参考 · 实机读数见右侧';
+    return;
+  }
   if(S.step==='check'){
     if(S.fault==='offline'&&S.scan>=15&&!S.scanning){L.red=['left_knee'];L.ghost=true;cz='left'}
     if(sel){L.hot=[sel];L.red=[];L.ghost=true}
@@ -1577,7 +1612,9 @@ function setArrow(active,positive){
 let arrowKey=null,arrowPos=true;
 const padQ={};
 function poseFor(t,now){
-  const q={};J.forEach(j=>q[j.key]=0);arrowKey=null;
+  arrowKey=null;
+  if(inLiveMode())return livePose();
+  const q={};J.forEach(j=>q[j.key]=0);
   if(S.step==='follow'){
     const j=curJ();
     if(S.wrong)q[S.wrong.key]=sim.q[S.wrong.key];
@@ -1614,8 +1651,8 @@ function drawScene(t,now){
   J.forEach(j=>{const n=nodeOf(j.key);if(n)n.pivot.quaternion.setFromAxisAngle(n.axis,q[j.key])});
   setArrow(arrowKey,arrowPos);
   tickFade();
-  tiltG.rotation.set(-sim.tilt.r*D2R,sim.tilt.p*D2R,0);
-  place.rotation.y=padYaw;
+  tiltG.rotation.set(inLiveMode()?0:-sim.tilt.r*D2R,inLiveMode()?0:sim.tilt.p*D2R,0);
+  place.rotation.y=inLiveMode()?0:padYaw;
   // 让脚底始终贴地（和官方 groundFullBody 同一思路，只算鞋底更省）
   place.position.y=0;place.updateWorldMatrix(true,true);
   floorBox.makeEmpty();SOLES.forEach(m=>floorBox.expandByObject(m));
@@ -1641,6 +1678,7 @@ function tickScript(now){
 }
 let lastSlider=0,lastPos=0;
 function frame(now){
+  if(inLiveMode()){drawScene(now/1000,now);requestAnimationFrame(frame);return}
   tickScript(now);readBus();
   if(S.step==='follow')tickFollow(now);
   if(S.step==='imu')tickImu(now);
@@ -1658,6 +1696,7 @@ function frame(now){
 }
 render();
 requestAnimationFrame(frame);
+if(typeof live!=='undefined')liveStart();
 const modelP=initThree().catch(err=>{
   console.error(err);
   if(R){R.domElement.remove();R=null}

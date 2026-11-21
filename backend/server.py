@@ -2,6 +2,7 @@
 """hello-microduck local real-device service. Never served by Cloudflare Pages."""
 import argparse
 import json
+import re
 import secrets
 import sys
 import webbrowser
@@ -13,16 +14,31 @@ from service import HostKeyRequired, RobotService
 
 STATIC = Path(__file__).with_name('static')
 GUIDE = STATIC.parent.parent / 'tool' / 'calibration.html'
-CONSOLE_CSP = (
-    "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; "
-    "frame-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
-)
-GUIDE_CSP = (
-    "sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox; default-src 'none'; "
-    "script-src 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://fonts.googleapis.com; "
-    "font-src https://fonts.gstatic.com; img-src data: blob:; frame-ancestors 'self'; "
-    "base-uri 'none'; form-action 'none'"
-)
+API_CSP = "default-src 'none'; frame-ancestors 'none'"
+JAVASCRIPT = 'text/javascript; charset=utf-8'
+ASSETS = {'/' + name: STATIC / name for name in (
+    'live.js', 'three/three.module.min.js', 'three/utils/BufferGeometryUtils.js',
+    'three/environments/RoomEnvironment.js',
+)}
+
+
+def console_page():
+    """Use the shared guide markup and load only bundled scripts on the SSH origin."""
+    nonce = secrets.token_urlsafe(24)
+    nonce_attr = ' nonce="%s"' % nonce
+    source = GUIDE.read_text(encoding='utf-8')
+    source = re.sub(r'^<link [^\n]*fonts\.googleapis\.com[^\n]*>\n', '', source, flags=re.MULTILINE)
+    source = source.replace('https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js', '/three/three.module.min.js')
+    source = source.replace('https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/', '/three/')
+    source = source.replace('<script type="importmap">', '<script type="importmap"%s>' % nonce_attr)
+    source = source.replace('<script>\n\'use strict\';', '<script src="/live.js"></script>\n<script%s>\n\'use strict\';' % nonce_attr, 1)
+    source = source.replace('<title>MicroDuck 标定流程演示</title>', '<title>MicroDuck 本机标定</title>')
+    source = source.replace('id="mode-brand">MicroDuck 标定 · 演示', 'id="mode-brand">MicroDuck 标定 · 实机')
+    csp = (
+        "default-src 'none'; script-src 'self' 'nonce-%s'; style-src 'unsafe-inline'; "
+        "connect-src 'self'; img-src data: blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+    ) % nonce
+    return ('<!doctype html>\n<html lang="zh-CN">\n' + source).encode(), csp
 
 
 def make_handler(service, token):
@@ -35,7 +51,7 @@ def make_handler(service, token):
             host = '127.0.0.1:%s' % self.server.server_port
             return self.headers.get('Host') == host and self.headers.get('Sec-Fetch-Site') not in ('cross-site',)
 
-        def reply(self, status, data, kind='application/json; charset=utf-8', csp=CONSOLE_CSP):
+        def reply(self, status, data, kind='application/json; charset=utf-8', csp=API_CSP):
             raw = data if isinstance(data, bytes) else json.dumps(data, ensure_ascii=False).encode()
             self.send_response(status)
             self.send_header('Content-Type', kind)
@@ -53,16 +69,12 @@ def make_handler(service, token):
             path = urlsplit(self.path).path
             if path == '/api/session':
                 return self.reply(200, {'token': token, 'mode': 'real', 'version': '1.0.0'})
-            if path == '/preview/':
-                guide = b'<!doctype html>\n<html lang="zh-CN">\n' + GUIDE.read_bytes()
-                return self.reply(200, guide, 'text/html; charset=utf-8', GUIDE_CSP)
-            files = {'/': ('console.html', 'text/html; charset=utf-8'),
-                     '/app.js': ('app.js', 'text/javascript; charset=utf-8'),
-                     '/style.css': ('style.css', 'text/css; charset=utf-8')}
-            if path not in files:
-                return self.reply(404, {'error': '不存在的路径'})
-            name, kind = files[path]
-            self.reply(200, (STATIC / name).read_bytes(), kind)
+            if path == '/':
+                page, csp = console_page()
+                return self.reply(200, page, 'text/html; charset=utf-8', csp)
+            if path in ASSETS:
+                return self.reply(200, ASSETS[path].read_bytes(), JAVASCRIPT)
+            return self.reply(404, {'error': '不存在的路径'})
 
         def do_POST(self):
             origin = 'http://127.0.0.1:%s' % self.server.server_port

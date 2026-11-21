@@ -165,33 +165,30 @@ class HTTPTests(unittest.TestCase):
 
     def test_static_session_and_real_disconnected_status(self):
         status,body,headers=self.request('/')
-        self.assertEqual(status,200);self.assertIn('本机实机调试'.encode(),body)
+        self.assertEqual(status,200);self.assertIn('MicroDuck 本机标定'.encode(),body)
         self.assertIn("frame-ancestors 'none'",headers['Content-Security-Policy'])
         status,body,_=self.request('/api/session');self.assertEqual(json.loads(body)['mode'],'real')
         status,body,_=self.request('/api/status',{},self.valid_headers())
         self.assertEqual(status,200);self.assertEqual(json.loads(body)['result'],{'connected':False})
 
-    def test_replacement_console_starts_with_isolated_current_guide(self):
+    def test_console_serves_one_guide_with_local_assets_and_no_demo_routes(self):
         status, body, headers = self.request('/')
         self.assertEqual(status, 200)
-        self.assertIn(b'src="/preview/" sandbox="allow-scripts', body)
-        self.assertIn(b'<main id="real" hidden>', body)
-        self.assertNotIn('allow-same-origin', body.decode())
-        self.assertNotIn('https://cdn.jsdelivr.net', headers['Content-Security-Policy'])
-
-        status, body, headers = self.request('/preview/')
-        self.assertEqual(status, 200)
+        self.assertIn(b'<script src="/live.js"></script>', body)
+        self.assertIn('>体验演示</button>'.encode(), body)
+        self.assertNotIn(b'<iframe', body)
+        self.assertNotIn(b'https://cdn.jsdelivr.net', body)
+        self.assertNotIn(b'https://fonts.googleapis.com', body)
         self.assertIn('摄像头与 ToF'.encode(), body)
-        self.assertIn('保存并重新试站'.encode(), body)
+        self.assertIn(b'"three":"/three/three.module.min.js"', body)
         csp = headers['Content-Security-Policy']
-        self.assertIn('sandbox allow-scripts', csp)
-        self.assertIn("default-src 'none'", csp)
-        self.assertNotIn('allow-same-origin', csp)
-        self.assertEqual(self.request('/index.html')[0], 404)
-
-        sandbox_headers = {**self.valid_headers(), 'Origin': 'null'}
-        self.assertEqual(self.request('/api/command', {'action': 'relax'}, sandbox_headers)[0], 403)
-        self.service.command.assert_not_called()
+        nonce = csp.split("'nonce-")[1].split("'")[0]
+        self.assertIn(('nonce="' + nonce + '"').encode(), body)
+        self.assertIn("connect-src 'self'", csp)
+        for path in ('/live.js', '/three/three.module.min.js', '/three/utils/BufferGeometryUtils.js', '/three/environments/RoomEnvironment.js'):
+            self.assertEqual(self.request(path)[0], 200)
+        for path in ('/index.html', '/preview/', '/app.js', '/style.css'):
+            self.assertEqual(self.request(path)[0], 404)
 
     def test_cross_origin_missing_token_and_rebinding_are_rejected(self):
         for headers in [{}, {**self.valid_headers(),'Origin':'https://attacker.example'},

@@ -450,7 +450,7 @@
 <ol class="how">
   <li><b>下载并完整解压：</b>下载上面的本机调试包，或获取 GitHub 源码。需要 Python 3.9 或更新版本，首次启动需联网安装依赖。</li>
   <li><b>启动本机后台：</b>macOS 可双击 <code>start.command</code>，或在项目目录运行 <code>bash start.command</code>；Windows 安装 Python（含 Launcher）后双击 <code>start.cmd</code>；Linux 同样运行 <code>bash start.command</code>。</li>
-  <li><b>在自己的电脑打开：</b>电脑和 MicroDuck 要连在同一个 Wi-Fi。启动器会打开 <code>http://127.0.0.1:8098/</code> 的新版向导演示。点击顶部「本机实机调试」，填写机器人 SSH 地址和密码，或使用已经配置好的密钥；首次连接需核对 SSH 主机指纹。</li>
+  <li><b>在自己的电脑打开：</b>电脑和 MicroDuck 要连在同一个 Wi-Fi。启动器会打开 <code>http://127.0.0.1:8098/</code> 的实机调试页。直接填写机器人 SSH 地址和密码，或使用已经配置好的密钥；首次连接需核对 SSH 主机指纹。</li>
   <li><b>确认固件接口：</b>机器人需已运行支持 <code>robot.busStatus</code> 与 <code>robot.busCommand</code> 的飞特版 robotd，默认 socket 为 <code>/run/robotd.sock</code>。写入标定前须按固件说明进入 <code>commissioning</code> 模式；本工具不会替你安装或切换固件。</li>
   <li><b>读取、再采集：</b>核对总线和 IMU 反馈，支撑机身并卸力，手动摆到已知角度；填写实测方向与限位，再写入选中关节的标定。卸力可随时单独操作，单颗回中位要求先拆下舵盘。</li>
 </ol>
