@@ -5,19 +5,21 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const source = fs.readFileSync(path.join(__dirname, '../backend/static/live.js'), 'utf8');
-function fixture() {
+function fixture({calibrationResponse} = {}) {
   const requests = [];
   let connected = false;
   let saved = [];
+  let now = 1000;
+  let tick, interval;
   const joint = {id: 20, key: 'left_hip_yaw'};
   const report = () => connected ? {
     connected, target: 'radxa@fixture.local',
     bus: {mode:'commissioning', torque_state:'off', updated_at_us:1000,
       last_sample:{at_us:950, servos:[{id:20, joint:joint.key, position_raw:2050}]}},
-    calibration: {calibration:{joints:saved}},
   } : {connected};
   const context = vm.createContext({
-    K: Math.PI * 2 / 4096, J: [joint], render(){}, $(){return null}, setInterval(){},
+    K: Math.PI * 2 / 4096, J: [joint], reduced:false, render(){}, $(){return null},
+    performance:{now:() => now}, setInterval(callback, ms){tick = callback; interval = ms},
     isBusy(){return false}, tuneDirty(){return false}, S:{pad:{sub:'ready'}},
     fetch: async (route, options) => {
       const body = options.body && JSON.parse(options.body);
@@ -28,6 +30,10 @@ function fixture() {
         return {ok:true, json:async () => ({result:{saved:true}})};
       }
       if (route === '/api/connect') connected = true;
+      if (route === '/api/calibration') {
+        if (calibrationResponse) await calibrationResponse;
+        return {ok:true, json:async () => ({result:{calibration:{joints:saved}}})};
+      }
       if (route === '/api/session') return {ok:true, json:async () => ({mode:'real', token:'test-session-ticket'})};
       return {ok:true, json:async () => ({result:report()})};
     },
@@ -35,8 +41,8 @@ function fixture() {
   });
   vm.runInContext(source, context);
   const run = input => vm.runInContext(input, context);
-  run('liveUpdate = () => {}');
-  return {run, requests};
+  run('liveUpdate = () => { live.feedbackVisible = liveFresh(); }');
+  return {run, requests, advance(ms){now += ms}, tick(){tick()}, interval:() => interval};
 }
 
 test('default mode submits SSH credentials only to the local connect API and reads real joint feedback', async () => {
@@ -44,6 +50,7 @@ test('default mode submits SSH credentials only to the local connect API and rea
   assert.equal(run('live.mode'), true);
   await run('liveStart()');
   await run('liveConnect({elements:{password:{value:"local-fixture-example"}}})');
+  await run('live.pendingRead');
   assert.equal(run('live.step'), 'check');
   assert.equal(run('liveServo(J[0]).position_raw'), 2050);
   assert.deepEqual(requests.find(request => request.route === '/api/connect'), {
@@ -56,13 +63,56 @@ test('real capture is blocked on stale feedback and reads back the saved joint a
   const {run, requests} = fixture();
   await run('liveStart()');
   await run('liveConnect({elements:{password:{value:"local-fixture-example"}}})');
+  await run('Promise.all([live.pendingRead, live.pendingCalibration])');
   const payload = `{action:'capture', id:20, supported:true, angle_deg:0, direction:1, min_deg:-17, max_deg:17}`;
   await run(`live.receivedAt=0; liveOperate(${payload}, '已保存')`);
   assert.equal(requests.filter(request => request.route === '/api/command').length, 0);
   await run(`liveRefresh();`);
   await run(`liveOperate(${payload}, '已保存')`);
-  assert.deepEqual(requests.slice(-2).map(request => request.route), ['/api/command', '/api/status']);
+  assert.deepEqual(requests.slice(-3).map(request => request.route), ['/api/command', '/api/status', '/api/calibration']);
   assert.equal(run('liveSaved(J[0]).zero_raw'), 2050);
+});
+
+test('100 ms feedback polling continues while calibration is pending', async () => {
+  let finishCalibration;
+  const calibrationResponse = new Promise(resolve => {finishCalibration = resolve;});
+  const {run, requests, tick, advance, interval} = fixture({calibrationResponse});
+  await run('liveStart()');
+  await run('liveConnect({elements:{password:{value:"local-fixture-example"}}})');
+  await run('live.pendingRead');
+  assert.equal(interval(), 100);
+  for (let i = 0; i < 10; i++) {
+    advance(100);
+    tick();
+    tick();
+    await run('live.pendingRead');
+  }
+  assert.equal(requests.filter(request => request.route === '/api/status').length, 12);
+  assert.equal(requests.filter(request => request.route === '/api/calibration').length, 1);
+  assert.equal(run('liveServo(J[0]).position_raw'), 2050);
+  finishCalibration();
+  await run('live.pendingCalibration');
+});
+
+test('the model settles within 65 ms and holds the last pose when feedback expires', () => {
+  const {run, advance} = fixture();
+  run(`globalThis.motion = position => ({connected:true, bus:{mode:'motion', phase:'control', native:{
+    sample_age_ms:20, joints:[{id:20, name:J[0].key, position_raw:2013, position_rad:position}]
+  }}});
+  liveModelPose(performance.now())`);
+  run('liveAccept(motion(1))');
+  assert.equal(run('liveModelPose(performance.now())[J[0].key]'), 0);
+  advance(32.5);
+  assert.equal(run('liveModelPose(performance.now())[J[0].key]'), 0.5);
+  advance(32.5);
+  assert.equal(run('liveModelPose(performance.now())[J[0].key]'), 1);
+  advance(416);
+  assert.equal(run('liveFresh()'), false);
+  assert.equal(run('liveModelPose(performance.now())[J[0].key]'), 1);
+  run('liveAccept(motion(2), performance.now() - 600)');
+  assert.equal(run('liveModelPose(performance.now())[J[0].key]'), 1);
+  run('liveAccept({connected:false})');
+  assert.equal(run('liveModelPose(performance.now())[J[0].key]'), 0);
 });
 
 test('demo switch stays in the same UI, clears the unsubmitted password and performs no SSH calls', () => {

@@ -3,8 +3,10 @@
 // This adapter is loaded by the local service only. The demo keeps its own state.
 const live = {
   mode: true, step: 'connect', selected: null, target: 'radxa@192.168.31.37',
-  port: 22, socket: '/run/robotd.sock', token: '', report: null, receivedAt: 0,
+  port: 22, socket: '/run/robotd.sock', token: '', report: null, receivedAt: -Infinity,
   busy: false, relaxing: false, pendingRead: null, pendingKey: null,
+  calibration: null, pendingCalibration: null, calibrationDue: 0,
+  readDue: 0, panelDue: 0, feedbackVisible: false, feedbackError: '',
   error: '', notice: '', visited: new Set(),
 };
 
@@ -25,30 +27,35 @@ async function liveApi(path, body) {
 
 const liveConnected = () => live.report?.connected === true;
 const liveSample = () => live.report?.bus?.last_sample;
-const liveCalibration = () => live.report?.calibration?.calibration;
+const liveCalibration = () => live.calibration?.calibration;
 const liveSaved = joint => liveCalibration()?.joints?.find(row => row.id === joint.id && row.calibrated);
 const liveNative = () => live.report?.bus?.native || live.report?.bus;
 const feedbackMaxAgeMs = 500;
 
-function liveFresh() {
+function liveAge(now) {
   const bus = live.report?.bus;
-  if (!liveConnected() || !bus || Date.now() - live.receivedAt >= 5500) return false;
+  const elapsed = now - live.receivedAt;
+  if (!liveConnected() || !bus || !Number.isFinite(elapsed) || elapsed < 0) return Infinity;
   if (bus.mode === 'motion') {
     const age = liveNative()?.sample_age_ms;
-    return bus.phase === 'control' && bus.fresh_sample !== false && Number.isFinite(age) && age >= 0 && age <= feedbackMaxAgeMs;
+    return bus.phase === 'control' && bus.fresh_sample !== false && Number.isFinite(age) && age >= 0
+      ? age + elapsed : Infinity;
   }
   const age = (bus.updated_at_us - liveSample()?.at_us) / 1000;
-  return Number.isFinite(age) && age >= 0 && age <= feedbackMaxAgeMs;
+  return Number.isFinite(age) && age >= 0 ? age + elapsed : Infinity;
 }
 
-function liveServo(joint) {
-  if (!liveFresh()) return null;
+const liveFresh = (now = performance.now()) => liveAge(now) <= feedbackMaxAgeMs;
+
+function liveServo(joint, now = performance.now()) {
+  if (!liveFresh(now)) return null;
   const motionMode = live.report.bus.mode === 'motion';
   const rows = motionMode ? liveNative()?.joints : liveSample()?.servos;
   if (!Array.isArray(rows)) return null;
   const row = rows.find(item => item?.id === joint.id && (item.joint || item.name) === joint.key);
   if (!Number.isInteger(row?.position_raw)) return null;
-  if (motionMode && (row.feedback_fresh === false || row.sample_age_ms > feedbackMaxAgeMs)) return null;
+  if (motionMode && (row.feedback_fresh === false
+      || row.sample_age_ms + now - live.receivedAt > feedbackMaxAgeMs)) return null;
   return row;
 }
 
@@ -64,18 +71,49 @@ function liveMotorReady() {
   return liveConnected() && liveFresh() && bus.mode === 'commissioning' && bus.torque_state === 'off'
     && !bus.torque_off_pending && !bus.motion;
 }
-function livePose() {
+function livePose(now = performance.now()) {
   return Object.fromEntries(J.map(joint => {
-    const saved = liveSaved(joint), row = liveServo(joint);
+    const row = liveServo(joint, now);
     if (Number.isFinite(row?.position_rad)) return [joint.key, row.position_rad];
+    const saved = liveSaved(joint);
     const angle = saved && row ? saved.direction * (row.position_raw - saved.zero_raw) * K : 0;
     return [joint.key, Number.isFinite(angle) ? angle : 0];
   }));
 }
 
-function liveAccept(report) {
+const liveModel = {report: null, calibration: null, from: null, target: null, pose: null, startedAt: 0};
+function liveModelPose(now) {
+  const connected = liveConnected();
+  if (!connected || liveFresh(now)) {
+    if (!liveModel.target || liveModel.report !== live.report || liveModel.calibration !== live.calibration) {
+      const target = livePose(now);
+      liveModel.report = live.report;
+      liveModel.calibration = live.calibration;
+      if (!connected || !liveModel.pose || reduced) {
+        liveModel.from = liveModel.target = liveModel.pose = target;
+      } else if (J.some(joint => target[joint.key] !== liveModel.target[joint.key])) {
+        liveModel.from = liveModel.pose;
+        liveModel.target = target;
+        liveModel.startedAt = now;
+      }
+    }
+  }
+  if (!liveModel.pose) return liveModel.pose = liveModel.target = livePose(now);
+  if (liveModel.pose === liveModel.target) return liveModel.pose;
+  const progress = Math.min(1, (now - liveModel.startedAt) / 65);
+  if (progress === 1) return liveModel.pose = liveModel.target;
+  if (progress === 0) return liveModel.pose;
+  liveModel.pose = Object.fromEntries(J.map(({key}) => [
+    key, liveModel.from[key] + (liveModel.target[key] - liveModel.from[key]) * progress,
+  ]));
+  return liveModel.pose;
+}
+
+function liveAccept(report, requestedAt = performance.now()) {
   if (report?.connected !== true) {
     live.report = null;
+    live.calibration = null;
+    live.feedbackError = '';
     live.step = 'connect';
     live.selected = null;
     live.visited.clear();
@@ -83,25 +121,44 @@ function liveAccept(report) {
   }
   live.report = report;
   live.target = report.target || live.target;
-  live.receivedAt = Date.now();
+  // Conservatively include the request's transit time in the sample age.
+  live.receivedAt = requestedAt;
 }
 
 function liveRefresh() {
   if (live.pendingRead) return live.pendingRead;
   const wasConnected = liveConnected();
+  const requestedAt = performance.now();
   live.pendingRead = (async () => {
     try {
-      liveAccept(await liveApi('status', {}));
+      liveAccept(await liveApi('status', {}), requestedAt);
+      live.feedbackError = '';
+      live.readDue = 0;
       if (wasConnected !== liveConnected() && live.mode) render();
     } catch (error) {
-      live.receivedAt = 0;
-      live.error = error.message;
+      live.receivedAt = -Infinity;
+      live.feedbackError = error.message;
+      live.readDue = performance.now() + 1000;
     }
   })().finally(() => {
     live.pendingRead = null;
-    if (live.mode) liveUpdate();
+    const now = performance.now();
+    if (live.mode && (now >= live.panelDue || liveFresh(now) !== live.feedbackVisible)) liveUpdate();
   });
   return live.pendingRead;
+}
+
+function liveRefreshCalibration() {
+  if (live.pendingCalibration) return live.pendingCalibration;
+  live.pendingCalibration = liveApi('calibration', {})
+    .then(value => { if (liveConnected()) live.calibration = value; })
+    .catch(() => { live.calibration = null; })
+    .finally(() => {
+      live.pendingCalibration = null;
+      live.calibrationDue = performance.now() + 5000;
+      if (live.mode) liveUpdate();
+    });
+  return live.pendingCalibration;
 }
 
 async function liveStart() {
@@ -111,8 +168,13 @@ async function liveStart() {
     live.token = session.token;
     await liveRefresh();
     setInterval(() => {
-      if (live.mode && liveConnected() && !live.busy && !live.relaxing) liveRefresh();
-    }, 2000);
+      if (!live.mode || !liveConnected()) return;
+      const now = performance.now();
+      if (liveFresh(now) !== live.feedbackVisible) liveUpdate();
+      if (live.busy || live.relaxing) return;
+      if (now >= live.readDue) liveRefresh();
+      if (now >= live.calibrationDue) liveRefreshCalibration();
+    }, 100);
   } catch (error) {
     live.error = error.message;
   }
@@ -130,14 +192,18 @@ async function liveConnect(form, fingerprint) {
   liveUpdate();
   try {
     await live.pendingRead;
-    liveAccept(await liveApi('connect', request));
+    liveAccept(await liveApi('connect', request), -Infinity);
+    live.calibration = null;
+    live.feedbackError = '';
+    live.readDue = 0;
     live.pendingKey = null;
     live.visited.clear();
     live.step = 'check';
     live.notice = '';
     form.elements.password.value = '';
-    await liveRefresh();
     render();
+    liveRefresh();
+    liveRefreshCalibration();
   } catch (error) {
     live.pendingKey = error.fingerprint ? {fingerprint: error.fingerprint, target: request.target, port: request.port} : null;
     if (!live.pendingKey) form.elements.password.value = '';
@@ -158,7 +224,6 @@ async function liveOperate(payload, success) {
   live.notice = '等待 robotd 回执…';
   liveUpdate();
   try {
-    if (!relax) await live.pendingRead;
     const result = await liveApi('command', payload);
     if (payload.action === 'capture' && result?.saved !== true) throw new Error('robotd 未确认写入标定');
     if (relax && result?.torque !== 'off') throw new Error('robotd 未确认已卸力');
@@ -168,8 +233,18 @@ async function liveOperate(payload, success) {
     live.notice = '';
   } finally {
     // Always read back after the command, including when its reply was lost.
-    await live.pendingRead;
-    await liveRefresh();
+    const readBack = async () => {
+      await live.pendingRead;
+      await liveRefresh();
+    };
+    const readCalibration = async () => {
+      await live.pendingCalibration;
+      await liveRefreshCalibration();
+    };
+    await Promise.all([
+      readBack(),
+      ...(['capture', 'verify-imu'].includes(payload.action) ? [readCalibration()] : []),
+    ]);
     live[flag] = false;
     liveUpdate();
   }
@@ -266,13 +341,25 @@ function liveRenderRail() {
   })}`);
 }
 
+function liveUpdateStage(fresh = liveFresh()) {
+  if (!R) return;
+  const stageTag = $('stageTag');
+  const label = fresh ? '3D 实时关节反馈' : liveConnected() ? '3D 等待新鲜反馈' : '3D 关节参考';
+  if (stageTag.textContent !== label) stageTag.textContent = label;
+}
+
 function liveUpdate() {
   if (!live.mode) return;
   const messageEl = $('live-message'), bus = live.report?.bus;
   if (!messageEl) return;
-  messageEl.hidden = !(live.error || live.notice);
-  messageEl.className = `note ${live.error ? 'bad' : ''}`;
-  messageEl.textContent = live.error || live.notice;
+  const now = performance.now();
+  live.panelDue = now + 250;
+  const fresh = live.feedbackVisible = liveFresh(now);
+  const error = live.error || live.feedbackError;
+  messageEl.hidden = !(error || live.notice);
+  messageEl.className = `note ${error ? 'bad' : ''}`;
+  if (messageEl.textContent !== (error || live.notice)) messageEl.textContent = error || live.notice;
+  liveUpdateStage(fresh);
   $('link').textContent = liveConnected() ? `${live.target} · ${bus.mode || '模式未知'}` : '';
   $('live-relax').disabled = !liveConnected() || live.relaxing;
   $('mode-toggle').disabled = live.busy || live.relaxing;
@@ -285,7 +372,6 @@ function liveUpdate() {
   }
   for (const button of document.querySelectorAll('[data-idle]')) button.disabled = live.busy || live.relaxing;
   for (const button of document.querySelectorAll('[data-live-write]')) button.disabled = live.busy || live.relaxing || !liveMotorReady();
-  const fresh = liveFresh();
   for (const element of document.querySelectorAll('[data-live-position]')) {
     const row = liveServo(BY[element.dataset.livePosition]);
     element.textContent = row ? row.position_raw : '—';
@@ -327,7 +413,7 @@ async function liveDisconnect() {
   live.busy = true;
   liveUpdate();
   try {
-    await live.pendingRead;
+    await Promise.all([live.pendingRead, live.pendingCalibration]);
     liveAccept(await liveApi('disconnect', {}));
     live.notice = 'SSH 已断开。';
     live.error = '';
@@ -421,5 +507,8 @@ function liveToggle() {
   if (password) password.value = '';
   live.pendingKey = null;
   render();
-  if (live.mode && liveConnected()) liveRefresh();
+  if (live.mode && liveConnected()) {
+    liveRefresh();
+    liveRefreshCalibration();
+  }
 }

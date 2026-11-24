@@ -91,7 +91,8 @@ def make_handler(service, token):
                 if not isinstance(data, dict):
                     raise ValueError('请求格式无效')
                 routes = {'/api/connect': service.connect, '/api/disconnect': lambda d: service.disconnect(),
-                          '/api/status': lambda d: service.status(), '/api/command': service.command}
+                          '/api/status': lambda d: service.status(), '/api/calibration': lambda d: service.calibration(),
+                          '/api/command': service.command}
                 if self.path not in routes:
                     return self.reply(404, {'error': '不支持的接口'})
                 self.reply(200, {'result': routes[self.path](data)})

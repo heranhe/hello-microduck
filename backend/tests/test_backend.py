@@ -12,7 +12,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from service import HostKeyRequired, JOINTS, REMOTE, RobotConnectionError, RobotService, fingerprint
+from service import BUS_MONITOR, BusTelemetry, HostKeyRequired, JOINTS, REMOTE, RobotConnectionError, RobotService, fingerprint
 from server import make_handler
 from http.server import ThreadingHTTPServer
 
@@ -87,6 +87,52 @@ class CommandTests(unittest.TestCase):
 
 
 class RelayTests(unittest.TestCase):
+    @unittest.skipUnless(hasattr(socket, 'AF_UNIX'), 'Unix robot socket relay')
+    def test_bus_monitor_reuses_one_robotd_connection_for_multiple_samples(self):
+        with tempfile.TemporaryDirectory() as tmp, socket.socket(socket.AF_UNIX) as listener:
+            path = str(Path(tmp) / 'robotd.sock')
+            listener.bind(path)
+            listener.listen(1)
+            listener.settimeout(3)
+            requests = []
+
+            def robot():
+                with listener.accept()[0] as conn, conn.makefile('rb') as reader:
+                    conn.settimeout(3)
+                    for frame in range(3):
+                        request = json.loads(reader.readline())
+                        requests.append(request)
+                        reply = {'jsonrpc': '2.0', 'id': request['id'], 'result': {'frame': frame}}
+                        conn.sendall((json.dumps(reply) + '\n').encode())
+
+            worker = threading.Thread(target=robot, daemon=True)
+            worker.start()
+            process = subprocess.run([sys.executable, '-u', '-c', BUS_MONITOR, path], input='\n' * 3,
+                                     capture_output=True, text=True, timeout=5)
+            worker.join(3)
+            self.assertEqual(process.returncode, 0, process.stderr)
+            self.assertEqual([json.loads(line)['result']['frame'] for line in process.stdout.splitlines()], [0, 1, 2])
+            self.assertEqual(requests, [{'jsonrpc': '2.0', 'id': 1, 'method': 'robot.busStatus', 'params': {}}] * 3)
+
+    def test_status_reuses_ssh_channel_and_reopens_after_a_broken_reply(self):
+        client = Mock()
+        writer, reader, next_writer = Mock(), Mock(), Mock()
+        line = json.dumps({'jsonrpc': '2.0', 'id': 1, 'result': report()}) + '\n'
+        reader.readline.side_effect = [line, line, '']
+        client.exec_command.side_effect = [(writer, reader, Mock()), (next_writer, io.StringIO(line), Mock())]
+        service = RobotService()
+        service.client = client
+        service.telemetry = BusTelemetry(client, '/run/robotd.sock')
+        for _ in range(2):
+            self.assertEqual(service.status()['bus'], report())
+        client.exec_command.assert_called_once()
+        with self.assertRaisesRegex(RuntimeError, '实时反馈通道已中断'):
+            service.status()
+        writer.channel.close.assert_called_once()
+        self.assertEqual(service.status()['bus'], report())
+        self.assertEqual(client.exec_command.call_count, 2)
+        self.assertEqual(writer.flush.call_count, 3)
+
     @unittest.skipUnless(hasattr(socket, 'AF_UNIX'), 'Unix robot socket relay')
     def test_remote_agent_round_trip_with_unix_robotd_fixture(self):
         with tempfile.TemporaryDirectory() as tmp:

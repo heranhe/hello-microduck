@@ -33,6 +33,60 @@ with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as s:
  if len(line)>1048576 or not line.endswith(b'\\n'): raise RuntimeError('invalid robotd response')
  print(line.decode(),end='')
 '''
+BUS_MONITOR = '''import socket,sys
+with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as s:
+ s.settimeout(1)
+ s.connect(sys.argv[1])
+ with s.makefile('rb') as f:
+  for _ in sys.stdin.buffer:
+   s.sendall(b'{"jsonrpc":"2.0","id":1,"method":"robot.busStatus","params":{}}\\n')
+   line=f.readline(1048577)
+   if len(line)>1048576 or not line.endswith(b'\\n'): raise RuntimeError('invalid robotd response')
+   sys.stdout.buffer.write(line)
+   sys.stdout.buffer.flush()
+'''
+
+
+def rpc_result(raw):
+    reply = json.loads(raw)
+    if reply.get('id') != 1 or reply.get('jsonrpc') != '2.0':
+        raise RuntimeError('robotd 响应格式不匹配')
+    if reply.get('error'):
+        raise RuntimeError(str(reply['error'].get('message', 'robotd 拒绝请求')))
+    if 'result' not in reply:
+        raise RuntimeError('robotd 响应缺少 result')
+    return reply['result']
+
+
+class BusTelemetry:
+    """One read-only SSH channel per login, independent of command channels."""
+
+    def __init__(self, client, path):
+        self.client = client
+        self.path = path
+        self.lock = threading.Lock()
+        self.stdin = self.stdout = None
+
+    def read(self):
+        with self.lock:
+            try:
+                if self.stdin is None:
+                    command = 'python3 -u -c ' + shlex.quote(BUS_MONITOR) + ' ' + shlex.quote(self.path)
+                    self.stdin, self.stdout, _ = self.client.exec_command(command, timeout=2)
+                self.stdin.write(b'\n')
+                self.stdin.flush()
+                raw = self.stdout.readline(1048577)
+                if len(raw) > 1048576 or not raw.endswith('\n'):
+                    raise RuntimeError('robotd 实时反馈通道已中断或响应无效')
+                bus = rpc_result(raw)
+                if not isinstance(bus, dict):
+                    raise RuntimeError('robotd 返回了无效总线状态')
+                return bus
+            except Exception:
+                if self.stdin is not None:
+                    self.stdin.channel.close()
+                    self.stdin = self.stdout = None
+                raise
 
 
 class HostKeyRequired(Exception):
@@ -86,6 +140,7 @@ class RobotService:
     def __init__(self, known_hosts=None):
         self.known_hosts = Path(known_hosts or Path(__file__).parent / '.state' / 'known_hosts')
         self.client = None
+        self.telemetry = None
         self.target = None
         self.socket_path = '/run/robotd.sock'
         self.lock = threading.RLock()
@@ -154,6 +209,7 @@ class RobotService:
                 self.known_hosts.chmod(0o600)
             with self.lock:
                 old, self.client = self.client, client
+                self.telemetry = BusTelemetry(client, path)
                 self.target, self.socket_path = target, path
             if old:
                 old.close()
@@ -173,6 +229,7 @@ class RobotService:
     def _disconnect(self):
         with self.lock:
             client, self.client = self.client, None
+            self.telemetry = None
             self.target = None
         if client:
             client.close()
@@ -193,14 +250,7 @@ class RobotService:
                 raise RuntimeError('远端连接 robotd 失败：' + detail[-1000:])
             if len(raw) > 1048576:
                 raise RuntimeError('robotd 响应过大')
-            reply = json.loads(raw)
-            if reply.get('id') != 1 or reply.get('jsonrpc') != '2.0':
-                raise RuntimeError('robotd 响应格式不匹配')
-            if reply.get('error'):
-                raise RuntimeError(str(reply['error'].get('message', 'robotd 拒绝请求')))
-            if 'result' not in reply:
-                raise RuntimeError('robotd 响应缺少 result')
-            return reply['result']
+            return rpc_result(raw)
         finally:
             stdin.close()
             stdout.close()
@@ -215,20 +265,19 @@ class RobotService:
 
     def status(self):
         with self.lock:
-            if not self.client:
+            telemetry, target = self.telemetry, self.target
+            if telemetry is None:
                 return {'connected': False}
-            target = self.target
         started = time.monotonic()
-        bus = self.rpc('robot.busStatus', {})
-        calibration = None
-        calibration_error = None
-        try:
-            calibration = self.rpc('robot.busCommand', {'action': 'calibration-status'})
-        except RuntimeError as error:
-            calibration_error = str(error)
+        bus = telemetry.read()
+        with self.lock:
+            if telemetry is not self.telemetry:
+                raise RuntimeError('SSH 连接已切换，请重新读取反馈')
         return {'connected': True, 'target': target, 'bus': bus,
-                'calibration': calibration, 'calibration_error': calibration_error,
                 'request_ms': round((time.monotonic() - started) * 1000)}
+
+    def calibration(self):
+        return self.rpc('robot.busCommand', {'action': 'calibration-status'})
 
     def command(self, data):
         action = data.get('action')

@@ -1527,6 +1527,7 @@ function resize(){
   view.off=floating?(p.offsetWidth+28)/2:0;view.usable=(w-2*view.off)/h;
   if(view.off)cam.setViewOffset(w,h,view.off,0,w,h);else cam.clearViewOffset();
   cam.updateProjectionMatrix();
+  sceneNeedsDraw=true;
 }
 function nodeOf(key){if(key==='mouth')return NODES.mouth;return Object.values(NODES).find(n=>n.key===key)}
 const servoOf=k=>NODES[SERVO[k][0]].geoms[SERVO[k][1]];
@@ -1577,7 +1578,7 @@ function updateScene(){
     }else if(['imu','sensors'].includes(live.step))cz='head';
     setLook(L);
     if(cz!==lastCz){Object.assign(view.tgt,CAM[cz]);view.az=0;view.el=0;lastCz=cz}
-    $('stageTag').textContent='3D 关节参考 · 实机读数见右侧';
+    liveUpdateStage();
     return;
   }
   if(S.step==='check'){
@@ -1614,7 +1615,6 @@ let arrowKey=null,arrowPos=true;
 const padQ={};
 function poseFor(t,now){
   arrowKey=null;
-  if(inLiveMode())return livePose();
   const q={};J.forEach(j=>q[j.key]=0);
   if(S.step==='follow'){
     const j=curJ();
@@ -1646,19 +1646,27 @@ function poseFor(t,now){
   }
   return q;
 }
+let sceneNeedsDraw=true,lastScenePose=null,lastViewAz=null,lastViewEl=null;
 function drawScene(t,now){
   if(!R||!NODES.mouth)return;
-  const q=poseFor(t,now);
-  J.forEach(j=>{const n=nodeOf(j.key);if(n)n.pivot.quaternion.setFromAxisAngle(n.axis,q[j.key])});
+  const real=inLiveMode(),q=real?liveModelPose(now):poseFor(t,now);
+  const c=view.cur,g=view.tgt;
+  const poseChanged=q!==lastScenePose;
+  const movingCamera=Math.abs(c.az-g.az)+Math.abs(c.el-g.el)+Math.abs(c.ty-g.ty)+Math.abs(c.zoom-g.zoom)>.001;
+  if(real&&!poseChanged&&!sceneNeedsDraw&&!fadeDirty&&!movingCamera&&lastViewAz===view.az&&lastViewEl===view.el)return;
+  if(real)arrowKey=null;
+  if(poseChanged)J.forEach(j=>{const n=nodeOf(j.key);if(n)n.pivot.quaternion.setFromAxisAngle(n.axis,q[j.key])});
   setArrow(arrowKey,arrowPos);
   tickFade();
-  tiltG.rotation.set(inLiveMode()?0:-sim.tilt.r*D2R,inLiveMode()?0:sim.tilt.p*D2R,0);
-  place.rotation.y=inLiveMode()?0:padYaw;
-  // 让脚底始终贴地（和官方 groundFullBody 同一思路，只算鞋底更省）
-  place.position.y=0;place.updateWorldMatrix(true,true);
-  floorBox.makeEmpty();SOLES.forEach(m=>floorBox.expandByObject(m));
-  if(isFinite(floorBox.min.y))place.position.y=-floorBox.min.y;
-  const c=view.cur,g=view.tgt,e=.06;c.az+=(g.az-c.az)*e;c.el+=(g.el-c.el)*e;c.ty+=(g.ty-c.ty)*e;c.zoom+=(g.zoom-c.zoom)*e;
+  if(poseChanged){
+    tiltG.rotation.set(real?0:-sim.tilt.r*D2R,real?0:sim.tilt.p*D2R,0);
+    place.rotation.y=real?0:padYaw;
+    // 关节姿态改变时，重新把鞋底对齐地面。
+    place.position.y=0;place.updateWorldMatrix(true,true);
+    floorBox.makeEmpty();SOLES.forEach(m=>floorBox.expandByObject(m));
+    if(isFinite(floorBox.min.y))place.position.y=-floorBox.min.y;
+  }
+  const e=.06;c.az+=(g.az-c.az)*e;c.el+=(g.el-c.el)*e;c.ty+=(g.ty-c.ty)*e;c.zoom+=(g.zoom-c.zoom)*e;
   // 窄屏时按宽度退远，保证整只 MicroDuck 不被裁掉
   const fit=Math.max(.92,.42/(.573*Math.max(view.usable,.1)));
   const az=c.az+view.az,el=c.el+view.el,dist=fit*c.zoom;
@@ -1667,6 +1675,7 @@ function drawScene(t,now){
   cam.updateMatrixWorld();
   R.render(scene,cam);
   drawLabels();
+  lastScenePose=q;lastViewAz=view.az;lastViewEl=view.el;sceneNeedsDraw=false;
 }
 // 模拟脚本：把模拟实机的关节或机身按时间移动
 function tickScript(now){
