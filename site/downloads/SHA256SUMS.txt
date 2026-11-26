@@ -1,1 +1,1 @@
-9127c66e333c5821373e92eae013ff3b0d9b59ef8937d539daacca2b5d6bbc2f  hello-microduck-local.zip
+78c9a6ce59e38b3fde895f020ec5058f958f2095ffe47f4b4688d35e5700f222  hello-microduck-local.zip

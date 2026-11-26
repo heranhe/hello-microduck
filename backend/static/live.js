@@ -5,6 +5,7 @@ const live = {
   mode: true, step: 'connect', selected: null, target: 'radxa@192.168.31.37',
   port: 22, socket: '/run/robotd.sock', token: '', report: null, receivedAt: -Infinity,
   busy: false, relaxing: false, pendingRead: null, pendingKey: null,
+  starting: false, sessionFailed: false, drafts: new Map(),
   calibration: null, pendingCalibration: null, calibrationDue: 0,
   readDue: 0, panelDue: 0, feedbackVisible: false, feedbackError: '',
   error: '', notice: '', hasConnected: false, visited: new Set(),
@@ -15,7 +16,7 @@ async function liveApi(path, body) {
     method: 'POST', headers: {'Content-Type': 'application/json', 'X-Session-Token': live.token},
     body: JSON.stringify(body),
   };
-  if (path === 'status') options.signal = AbortSignal.timeout(5000);
+  if (path === 'status' || path === 'session') options.signal = AbortSignal.timeout(5000);
   const response = await fetch(`/api/${path}`, options);
   const data = await response.json();
   if (!response.ok) {
@@ -123,6 +124,7 @@ function liveAccept(report, requestedAt = performance.now()) {
     live.step = 'connect';
     live.selected = null;
     live.visited.clear();
+    live.drafts.clear();
     return;
   }
   live.hasConnected = true;
@@ -175,10 +177,14 @@ function liveRefreshCalibration() {
 }
 
 async function liveStart() {
+  if (live.starting || live.token) return;
+  live.starting = true;
+  liveUpdate();
   try {
     const session = await liveApi('session');
     if (session.mode !== 'real' || !session.token) throw new Error('未能建立实机会话');
     live.token = session.token;
+    live.sessionFailed = false;
     await liveRefresh();
     setInterval(() => {
       if (!live.mode || !liveConnected()) return;
@@ -188,10 +194,12 @@ async function liveStart() {
       if (now >= live.readDue) liveRefresh();
       if (now >= live.calibrationDue) liveRefreshCalibration();
     }, 100);
-  } catch (error) {
-    live.error = error.message;
+  } catch {
+    live.sessionFailed = true;
+  } finally {
+    live.starting = false;
+    liveUpdate();
   }
-  if (live.mode) liveUpdate();
 }
 
 async function liveConnect(form, fingerprint) {
@@ -215,6 +223,7 @@ async function liveConnect(form, fingerprint) {
     live.notice = '';
     form.elements.password.value = '';
     render();
+    liveFocusHeading();
     liveRefresh();
     liveRefreshCalibration();
   } catch (error) {
@@ -232,13 +241,17 @@ async function liveOperate(payload, success) {
   const relax = payload.action === 'relax';
   if (!liveConnected() || (relax ? live.relaxing : live.busy || live.relaxing || !liveMotorReady())) return;
   const flag = relax ? 'relaxing' : 'busy';
+  const selected = live.selected, draft = live.drafts.get(selected);
   live[flag] = true;
   live.error = '';
   live.notice = '等待 robotd 回执…';
   liveUpdate();
   try {
     const result = await liveApi('command', payload);
-    if (payload.action === 'capture' && result?.saved !== true) throw new Error('robotd 未确认写入标定');
+    if (payload.action === 'capture') {
+      if (result?.saved !== true) throw new Error('robotd 未确认写入标定');
+      if (live.drafts.get(selected) === draft) live.drafts.delete(selected);
+    }
     if (relax && result?.torque !== 'off') throw new Error('robotd 未确认已卸力');
     live.notice = success;
   } catch (error) {
@@ -274,18 +287,32 @@ function liveStep(next) {
   live.error = '';
   live.notice = '';
   render();
+  liveFocusHeading();
 }
 
-function liveSelect(key) {
+function liveFocusHeading() {
+  const heading = $('panel')?.querySelector('h1');
+  if (!heading) return;
+  heading.tabIndex = -1;
+  heading.focus();
+}
+
+function liveSelect(key, focusButton = false) {
   if (!BY[key] || live.selected === key || live.busy || live.relaxing) return;
   live.selected = key;
   render();
+  if (focusButton) $('panel').querySelector(`[data-j="${key}"]`)?.focus();
+}
+
+function liveRememberDraft(field) {
+  if (field.form?.id !== 'live-capture' || !['angle', 'direction', 'min', 'max'].includes(field.name)) return;
+  live.drafts.set(live.selected, {...live.drafts.get(live.selected), [field.name]: field.value});
 }
 
 function liveConnectionPanel() {
   if (liveConnected()) {
     const waiting = Boolean(live.feedbackError);
-    return html`<h1>${waiting ? '等待机器人响应' : '已连接机器人'}</h1><p class="say">${live.target}</p><div class="spring"></div><button class="btn main" data-a="liveStep" data-k="check" ${waiting ? 'disabled' : ''}>检查舵机</button>`;
+    return html`<h1>${waiting ? '等待机器人响应' : '已连接机器人'}</h1><p class="say">${live.target}<span id="live-connection-mode"></span></p><div class="spring"></div><button class="btn main" data-a="liveStep" data-k="check" ${waiting ? 'disabled' : ''}>检查舵机</button>`;
   }
   return html`<h1>连接 MicroDuck</h1><p class="say">确认机器人主板已通电并完成启动，电脑和机器人在同一局域网，再填写机器人 SSH 账户。</p>
     <form id="live-connection" class="stack">
@@ -296,6 +323,7 @@ function liveConnectionPanel() {
         <div class="field"><label for="live-socket">robotd socket</label><input name="socket" id="live-socket" value="${live.socket}" required spellcheck="false"></div>
       </div></details>
       <div class="note warn" id="live-host-key" hidden><strong>核对 SSH 主机指纹</strong><code id="live-fingerprint"></code><p>与机器人的主机公钥指纹一致后再确认。</p><button class="btn" type="button" data-a="liveTrust" data-idle>指纹一致，继续连接</button></div>
+      <button class="btn" id="live-retry-session" type="button" data-a="liveRetrySession" hidden>重试连接本机服务</button>
       <button class="btn main" type="submit" data-live-connect disabled>连接并读取状态</button>
     </form>${aboutNote}`;
 }
@@ -315,12 +343,14 @@ function liveCheckPanel() {
 function liveCapturePanel() {
   const joint = BY[live.selected];
   const saved = joint && liveSaved(joint);
+  const draft = live.drafts.get(live.selected);
+  const direction = draft?.direction ?? String(saved?.direction ?? '');
   return html`<h1>摆零位</h1><p class="say">选择一颗关节，托稳并卸力，手动摆至已知角度后记录。其他关节的标定会保留。</p>${liveJointList()}
     ${joint ? html`<div class="scard"><h2>${joint.label} · ${joint.id} 号</h2><p class="hint" id="live-detail"></p>
       <form id="live-capture" class="stack">
-        <div class="field"><label for="live-angle">当前已知角度 °（零位填 0）</label><input id="live-angle" name="angle" type="number" step="any" required></div>
-        <div class="field"><label for="live-direction">转动方向</label><select id="live-direction" name="direction" required><option value="">按装配实测选择</option><option value="-1" ${saved?.direction === -1 ? 'selected' : ''}>−1</option><option value="1" ${saved?.direction === 1 ? 'selected' : ''}>+1</option></select></div>
-        <div class="row"><div class="field"><label for="live-min">最小角 °</label><input id="live-min" name="min" type="number" step="any" value="${Number.isFinite(saved?.min_rad) ? saved.min_rad*R2D : ''}" required></div><div class="field"><label for="live-max">最大角 °</label><input id="live-max" name="max" type="number" step="any" value="${Number.isFinite(saved?.max_rad) ? saved.max_rad*R2D : ''}" required></div></div>
+        <div class="field"><label for="live-angle">当前已知角度 °（零位填 0）</label><input id="live-angle" name="angle" type="number" step="any" value="${draft?.angle ?? ''}" required></div>
+        <div class="field"><label for="live-direction">转动方向</label><select id="live-direction" name="direction" required><option value="">按装配实测选择</option><option value="-1" ${direction === '-1' ? 'selected' : ''}>−1</option><option value="1" ${direction === '1' ? 'selected' : ''}>+1</option></select></div>
+        <div class="row"><div class="field"><label for="live-min">最小角 °</label><input id="live-min" name="min" type="number" step="any" value="${draft?.min ?? (Number.isFinite(saved?.min_rad) ? saved.min_rad*R2D : '')}" required></div><div class="field"><label for="live-max">最大角 °</label><input id="live-max" name="max" type="number" step="any" value="${draft?.max ?? (Number.isFinite(saved?.max_rad) ? saved.max_rad*R2D : '')}" required></div></div>
         <label class="support-check"><input name="supported" type="checkbox" required>已可靠支撑机身，舵机已卸力</label>
         <button class="btn main" type="submit" data-live-write>写入 ${joint.id} 号关节标定</button>
         <details><summary>舵机还没装上骨架</summary><label class="support-check"><input name="unassembled" type="checkbox">此舵机已脱离骨架并拆下舵盘</label><button type="button" class="btn" data-a="liveCenter" data-live-write>将此舵机转到 2048</button></details>
@@ -349,12 +379,32 @@ function livePanel() {
 }
 
 function liveRenderRail() {
-  mount($('rail'), html`${STEP_KEYS.map((key, i) => {
-    const current = live.step === key;
-    const skipped = live.visited.has(key);
-    const done = key === 'connect' ? liveConnected() : key === 'check' ? J.every(liveServo) : key === 'pose' ? J.every(liveSaved) : key === 'imu' && liveCalibration()?.imu_mount_verified === true;
-    return html`<li class="${current ? 'now' : done ? 'done' : skipped ? 'skipped' : ''}"><button class="rb" data-a="liveStep" data-k="${key}" ${current ? new Safe('aria-current="step"') : ''} aria-label="${STEPS[i]}${skipped ? '，已跳过' : ''}"><i>${done && !current ? '✓' : skipped && !current ? '−' : i+1}</i><span>${STEPS[i]}${OPTIONAL.has(key) ? html`<small>可选</small>` : ''}</span></button></li>`;
-  })}`);
+  const rail = $('rail');
+  if (rail.firstElementChild?.firstElementChild?.dataset.a === 'liveStep') return;
+  mount(rail, html`${STEP_KEYS.map((key, i) => html`<li><button class="rb" data-a="liveStep" data-k="${key}"><i aria-hidden="true"></i><span>${STEPS[i]}${OPTIONAL.has(key) ? html`<small>可选</small>` : ''}</span></button></li>`)}`);
+}
+
+function liveUpdateRail(online) {
+  const rail = $('rail');
+  if (!rail) return;
+  const completed = {
+    connect: liveConnected(),
+    check: online === J.length,
+    pose: J.every(liveSaved),
+    imu: liveCalibration()?.imu_mount_verified === true,
+  };
+  STEP_KEYS.forEach((key, i) => {
+    const item = rail.children[i], button = item.firstElementChild;
+    const current = live.step === key, skipped = live.visited.has(key), done = completed[key];
+    const state = current ? 'now' : done ? 'done' : skipped ? 'skipped' : '';
+    if (item.className !== state) item.className = state;
+    if (current && !button.hasAttribute('aria-current')) button.setAttribute('aria-current', 'step');
+    if (!current && button.hasAttribute('aria-current')) button.removeAttribute('aria-current');
+    const label = STEPS[i] + (skipped ? '，已跳过' : done ? '，已完成' : '');
+    if (button.getAttribute('aria-label') !== label) button.setAttribute('aria-label', label);
+    const marker = current ? String(i + 1) : done ? '✓' : skipped ? '−' : String(i + 1);
+    if (button.firstElementChild.textContent !== marker) button.firstElementChild.textContent = marker;
+  });
 }
 
 function liveUpdateStage(fresh = liveFresh()) {
@@ -371,20 +421,27 @@ function liveUpdate() {
   const now = performance.now();
   live.panelDue = now + 250;
   const fresh = live.feedbackVisible = liveFresh(now);
-  const error = live.error || live.feedbackError;
-  messageEl.hidden = !(error || live.notice);
+  const error = !live.starting && (live.sessionFailed ? '无法连接本机后台。请确认中控启动器仍在运行，然后重试。' : live.error || live.feedbackError);
+  const message = live.starting ? '正在连接本机后台…' : error || live.notice;
+  messageEl.hidden = !message;
   messageEl.className = `note ${error ? 'bad' : ''}`;
-  if (messageEl.textContent !== (error || live.notice)) messageEl.textContent = error || live.notice;
+  if (messageEl.textContent !== message) messageEl.textContent = message;
   liveUpdateStage(fresh);
   const connected = liveConnected(), verified = connected && !live.feedbackError;
   const link = $('link');
-  const label = verified ? `已连接 · ${live.target} · ${bus?.mode || '模式未知'}`
+  const label = verified ? '已连接'
     : connected ? '等待机器人响应' : live.hasConnected ? 'SSH 已断开' : '尚未连接机器人';
-  if (link.textContent !== label) link.textContent = label;
+  const linkState = $('link-state'), linkDetail = $('link-detail');
+  const mode = bus?.mode || '模式未知';
+  const description = verified ? ` · ${live.target} · ${mode}` : '';
+  if (linkState.textContent !== label) linkState.textContent = label;
+  if (linkDetail.textContent !== description) linkDetail.textContent = description;
+  const connectionMode = $('live-connection-mode'), modeDetail = verified ? ` · ${mode}` : '';
+  if (connectionMode && connectionMode.textContent !== modeDetail) connectionMode.textContent = modeDetail;
   link.classList.toggle('live-connected', verified);
   const connectionAction = $('live-connection-action');
-  connectionAction.textContent = connected ? '断开' : live.hasConnected ? '重连' : '登录';
-  connectionAction.disabled = live.busy || live.relaxing || (connected && !live.token);
+  connectionAction.textContent = connected ? '断开' : live.sessionFailed ? '重试本机服务' : live.hasConnected ? '重连' : '登录';
+  connectionAction.disabled = live.starting || live.busy || live.relaxing || (connected && !live.token);
   $('live-relax').disabled = !liveConnected() || live.relaxing;
   $('mode-toggle').disabled = live.busy || live.relaxing;
   const form = $('live-connection');
@@ -392,25 +449,29 @@ function liveUpdate() {
     const key = live.pendingKey;
     $('live-host-key').hidden = !key;
     $('live-fingerprint').textContent = key?.fingerprint || '';
-    form.querySelector('[data-live-connect]').disabled = !live.token || live.busy;
+    const retry = $('live-retry-session');
+    retry.hidden = !live.sessionFailed;
+    retry.setAttribute('aria-disabled', String(live.starting));
+    form.querySelector('[data-live-connect]').disabled = !live.token || live.starting || live.busy;
   }
   for (const button of document.querySelectorAll('[data-idle]')) button.disabled = live.busy || live.relaxing;
   for (const button of document.querySelectorAll('[data-live-write]')) button.disabled = live.busy || live.relaxing || !liveMotorReady();
   for (const element of document.querySelectorAll('[data-live-position]')) {
-    const row = liveServo(BY[element.dataset.livePosition]);
+    const row = liveServo(BY[element.dataset.livePosition], now);
     element.textContent = row ? row.position_raw : '—';
     element.closest('button').classList.toggle('ok', Boolean(row));
   }
+  const online = J.filter(joint => liveServo(joint, now)).length;
+  liveUpdateRail(online);
   const count = $('live-count');
   if (count) {
-    const online = J.filter(liveServo).length;
-    count.textContent = !verified ? '等待机器人响应，实时读数暂不可用。'
+    count.textContent = !verified || !fresh ? '等待机器人响应，实时读数暂不可用。'
       : online ? `${online} / ${J.length} 颗有实时反馈 · 扭矩 ${liveTorqueLabel()}`
       : '主板已连接，暂无有效舵机反馈。请检查舵机供电、总线接线和固件运行状态。';
   }
   const detail = $('live-detail');
   if (detail && live.selected) {
-    const joint = BY[live.selected], saved = liveSaved(joint), row = liveServo(joint);
+    const joint = BY[live.selected], saved = liveSaved(joint), row = liveServo(joint, now);
     detail.textContent = `${row ? `位置 ${row.position_raw} · ${row.voltage_v ?? row.volts ?? '—'} V · ${row.temperature_c ?? '—'} °C` : '等候有效位置反馈'} · ${saved ? `已保存零位 ${saved.zero_raw} / 方向 ${saved.direction}` : '尚未回读到标定'}`;
   }
   const imu = $('live-imu');
@@ -465,6 +526,14 @@ function liveConfirm(title, details, label, onConfirm) {
   $('confirmLive').onclick = () => { dlg.close(); onConfirm(); };
 }
 
+async function liveRetrySession(button) {
+  const focused = document.activeElement === button;
+  await liveStart();
+  if (focused && live.mode && [button, document.body].includes(document.activeElement)) {
+    (live.sessionFailed ? button : $('live-target'))?.focus();
+  }
+}
+
 function liveHandleClick(button) {
   switch (button?.dataset.a) {
     case 'liveStep': liveStep(button.dataset.k); break;
@@ -473,9 +542,14 @@ function liveHandleClick(button) {
       liveConfirm('停止并卸力', '先托住机身，卸力后机身可能倒下。', '确认卸力',
         () => liveOperate({action: 'relax'}, 'robotd 已确认卸力。'));
       break;
+    case 'liveRetrySession':
+      liveRetrySession(button);
+      break;
     case 'liveConnectionAction':
       if (liveConnected()) {
         liveDisconnect();
+      } else if (live.sessionFailed) {
+        liveRetrySession(button);
       } else {
         if (live.step !== 'connect') liveStep('connect');
         ($('live-target')?.value ? $('live-password') : $('live-target'))?.focus();

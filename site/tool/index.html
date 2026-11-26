@@ -249,7 +249,7 @@ a.btn{display:flex;align-items:center;justify-content:center;text-align:center;t
 .repocard span{font-size:13px;color:var(--muted)}
 /* 顶栏右侧：连接状态 + 高级模式 */
 .hr{display:flex;align-items:center;gap:16px;margin-left:auto;white-space:nowrap}
-@media (max-width:1180px){#link .addr{display:none}}
+@media (max-width:1180px){#link:not(.live-status) #link-detail{display:none}}
 /* 小提示 */
 #toasts{position:fixed;z-index:50;top:calc(84px + env(safe-area-inset-top,0px));left:calc((100% - var(--pw) - 28px)/2);transform:translateX(-50%);display:grid;gap:8px;justify-items:center;pointer-events:none;width:max-content;max-width:calc(100vw - 32px)}
 .toast{pointer-events:auto;display:flex;align-items:center;gap:10px;min-height:40px;padding:6px 6px 6px 14px;background:var(--surface);border:2px solid var(--frame);box-shadow:4px 4px 0 var(--good);font-size:14px;cursor:pointer;animation:tin .16s ease-out}
@@ -340,7 +340,8 @@ ul.plain li.go::before{content:"…";color:var(--act)}
 .keyrow.hot,.keyrow.hot span{background:var(--hot);color:var(--hot-ink)}
 @media (max-width:820px){
   #toasts{left:50%}
-  #link{display:none}
+  #link:not(.live-status),#link.live-status #link-detail{display:none}
+  .hr{flex-wrap:wrap;justify-content:flex-end}
   main{height:auto}
   #stageWrap{position:static}
   #panel{position:static;width:auto;border-width:2px 0 0}
@@ -373,10 +374,12 @@ ul.plain li.go::before{content:"…";color:var(--act)}
 
 #live-message{white-space:pre-line;overflow-wrap:anywhere}
 .live-options{margin-top:10px}.live-data{white-space:pre-wrap;overflow:auto;max-height:240px;font:12px/1.6 var(--mono);color:var(--muted)}
-#mode-toggle,#live-relax{white-space:nowrap}.hr{margin-left:auto;gap:10px}
-#mode-toggle{padding:5px 8px;text-decoration:none;border:1px solid var(--line);color:var(--ink)}
+#mode-toggle,#live-relax,#live-connection-action{white-space:nowrap}.hr{margin-left:auto;gap:10px}
+#mode-toggle,#live-connection-action{padding:5px 8px;text-decoration:none;border:1px solid var(--line);color:var(--ink)}
+#live-connection-action:disabled{opacity:.4;cursor:default}
+#link.live-status{color:var(--muted)}#link.live-connected{color:var(--good)}
 #live-relax{color:var(--bad)}#live-relax:disabled{opacity:.4;cursor:default}
-@media(max-width:420px){.brandbox{flex:1 1 100%}.hr{flex-wrap:wrap;justify-content:flex-end}}
+@media(max-width:420px){.brandbox{flex:1 1 100%}}
 </style>
 
 <div id="app">
@@ -384,7 +387,7 @@ ul.plain li.go::before{content:"…";color:var(--act)}
     <div class="brandbox"><div class="brandrow"><b id="mode-brand">MicroDuck 标定 · 演示</b><button class="unoff" data-a="about" title="这是非官方工具，点开看说明">非官方</button></div>
       <div class="ghrow"><span>训练个性化动作</span><a class="ghbtn" href="https://github.com/heranhe/microduck-lab-cloud" target="_blank" rel="noopener" title="打开我的训练实验室：训练、世界模拟、动作编辑和云端 GPU">GitHub ↗</a></div></div>
     <ol id="rail" aria-label="标定进度"></ol>
-    <div class="hr"><span id="link"></span><button class="link" data-a="adv">高级模式</button><button class="link" id="live-relax" data-a="liveRelax" hidden disabled>停止并卸力</button><button class="link" id="mode-toggle" data-a="liveToggle" hidden>体验演示</button></div>
+    <div class="hr"><span id="link" role="status"><span id="link-state"></span><span id="link-detail"></span></span><button type="button" class="link" id="live-connection-action" data-a="liveConnectionAction" hidden>登录</button><button class="link" data-a="adv">高级模式</button><button class="link" id="live-relax" data-a="liveRelax" hidden disabled>停止并卸力</button><button class="link" id="mode-toggle" data-a="liveToggle" hidden>体验演示</button></div>
   </header>
   <main>
     <div id="stageWrap">
@@ -1048,6 +1051,10 @@ function render(){
     $('mode-brand').textContent=live.mode?'MicroDuck 标定 · 实机':'MicroDuck 标定 · 演示';
     $('mode-toggle').hidden=false;
     $('mode-toggle').textContent=live.mode?'体验演示':'返回实机调试';
+    $('live-connection-action').hidden=!live.mode;
+    $('link').classList.toggle('live-status',live.mode);
+    if(live.mode)$('link').removeAttribute('title');
+    if(!live.mode)$('link').classList.remove('live-connected');
     $('live-relax').hidden=!live.mode&&!liveConnected();
     if(live.mode){liveRender();return}
     $('dock').hidden=false;
@@ -1055,8 +1062,9 @@ function render(){
   mount($('rail'),html`${STEPS.map((t,i)=>{const k=STEP_KEYS[i],now=i===stepNo(),done=isDone(k),skipped=isSkipped(k),lock=!now&&!done&&missing(k).length>0;
     return html`<li class="${now?'now':done?'done':skipped?'skipped':''}${lock?' lock':''}"><button class="rb" data-a="go" data-s="${i}" aria-label="${t}，${now?'当前步骤':done?'已完成':skipped?skipLabel(k):'待完成'}${OPTIONAL.has(k)?'，可选':''}" ${now?new Safe('aria-current="step"'):''}><i>${done&&!now?'✓':skipped&&!now?'−':i+1}</i><span>${t}${OPTIONAL.has(k)?html`<small>${skipped?skipLabel(k):'可选'}</small>`:''}</span></button></li>`})}`);
   if(S.step!==lastStep){S.pin=S.tune?.key||S.recal?.key||null;S.hover=null;lastStep=S.step}
-  {const L=$('link');L.replaceChildren();
-    if(S.conn.up){L.append('已连接');const a=document.createElement('span');a.className='addr';a.textContent=' '+S.conn.addr;L.append(a);L.title=S.conn.addr}else L.removeAttribute('title')}
+  $('link-state').textContent=S.conn.up?'已连接':'';
+  $('link-detail').textContent=S.conn.up?' '+S.conn.addr:'';
+  if(S.conn.up)$('link').title=S.conn.addr;else $('link').removeAttribute('title');
   mount($('panel'),panelBody());
   showSel();
   attachPad();
@@ -1207,7 +1215,7 @@ document.addEventListener('click',e=>{
   if(typeof live!=='undefined'&&modeAction?.dataset.a==='liveRelax'){if(!modeAction.disabled)liveHandleClick(modeAction);return}
   if(inLiveMode()){
     const servo=e.target.closest('[data-j]');
-    if(servo){liveSelect(servo.dataset.j);return}
+    if(servo){liveSelect(servo.dataset.j,true);return}
     if(modeAction&&!modeAction.disabled)liveHandleClick(modeAction);
     return;
   }
@@ -1227,7 +1235,11 @@ document.addEventListener('change',e=>{
   if(e.target.id==='idToggle'){labelsOn=e.target.checked;render()}
 });
 document.addEventListener('keydown',e=>{if(!inLiveMode()&&e.key==='Enter'&&e.target.closest('.field'))$('panel').querySelector('[data-primary]')?.click()});
-document.addEventListener('input',e=>{if(e.target.id==='sshAddr')S.conn.addr=e.target.value;if(e.target.id==='hand'){initAudio();const k=driveKey(),v=+e.target.value/100;sim.script=[];sim.q[k]=v>=0?v*sim.hi[k]:-v*sim.lo[k]}});
+document.addEventListener('input',e=>{
+  if(inLiveMode()){liveRememberDraft(e.target);return}
+  if(e.target.id==='sshAddr')S.conn.addr=e.target.value;
+  if(e.target.id==='hand'){initAudio();const k=driveKey(),v=+e.target.value/100;sim.script=[];sim.q[k]=v>=0?v*sim.hi[k]:-v*sim.lo[k]}
+});
 document.addEventListener('keydown',e=>{if(inLiveMode()||e.code!=='Space'||e.target.closest('button,select,input,textarea,dialog'))return;const b=document.querySelector('[data-primary]');if(b){e.preventDefault();b.click()}});
 function showSel(){
   const k=selKey(),el=$('selLine');

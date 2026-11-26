@@ -5,7 +5,7 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const source = fs.readFileSync(path.join(__dirname, '../backend/static/live.js'), 'utf8');
-function fixture({calibrationResponse, statusResponse} = {}) {
+function fixture({calibrationResponse, statusResponse, sessionResponse} = {}) {
   const requests = [];
   let connected = false;
   let saved = [];
@@ -34,7 +34,7 @@ function fixture({calibrationResponse, statusResponse} = {}) {
         if (calibrationResponse) await calibrationResponse;
         return {ok:true, json:async () => ({result:{calibration:{joints:saved}}})};
       }
-      if (route === '/api/session') return {ok:true, json:async () => ({mode:'real', token:'test-session-ticket'})};
+      if (route === '/api/session') return sessionResponse?.() || {ok:true, json:async () => ({mode:'real', token:'test-session-ticket'})};
       if (route === '/api/status') {
         const response = statusResponse?.();
         if (response) return response;
@@ -54,7 +54,7 @@ test('connection status and the header action follow login, feedback loss and co
   let response;
   const {run, requests, advance, tick} = fixture({statusResponse: () => response});
   run(`
-    globalThis.nodes = Object.fromEntries(['live-message', 'link', 'live-relax', 'mode-toggle',
+    globalThis.nodes = Object.fromEntries(['live-message', 'link', 'link-state', 'link-detail', 'live-relax', 'mode-toggle',
       'live-connection-action', 'live-password'].map(id => [id, {classList:{toggle(){}}}]));
     nodes['live-target'] = {value:live.target};
     nodes['live-password'].focus = () => { nodes['live-password'].focused = true; };
@@ -71,6 +71,11 @@ test('connection status and the header action follow login, feedback loss and co
   await run('liveStart()');
   await run('liveConnect({elements:{password:{value:"local-fixture-example"}}})');
   await run('Promise.all([live.pendingRead, live.pendingCalibration])');
+  run(`nodes['live-count'] = {}; liveUpdate()`);
+  assert.match(run(`nodes['live-count'].textContent`), /1 \/ 1 颗有实时反馈/);
+  advance(501);
+  run('liveUpdate()');
+  assert.match(run(`nodes['live-count'].textContent`), /实时读数暂不可用/);
   run(`liveStep('connect')`);
   assert.match(run('panelMarkup'), /已连接机器人/);
   assert.equal(run(`nodes['live-connection-action'].textContent`), '断开');
@@ -78,7 +83,7 @@ test('connection status and the header action follow login, feedback loss and co
   response = {ok:false, json:async () => ({error:'反馈通道暂不可用'})};
   await run('liveRefresh()');
   assert.doesNotMatch(run('panelMarkup'), /已连接机器人/);
-  assert.equal(run(`nodes.link.textContent`), '等待机器人响应');
+  assert.equal(run(`nodes['link-state'].textContent`), '等待机器人响应');
 
   response = {ok:true, json:async () => ({result:{connected:false, reason:'SSH 已断开。'}})};
   advance(1000);
@@ -86,12 +91,27 @@ test('connection status and the header action follow login, feedback loss and co
   await run('live.pendingRead');
   assert.equal(run('liveConnected()'), false);
   assert.match(run('panelMarkup'), /连接 MicroDuck/);
-  assert.equal(run(`nodes.link.textContent`), 'SSH 已断开');
+  assert.equal(run(`nodes['link-state'].textContent`), 'SSH 已断开');
   assert.equal(run(`nodes['live-connection-action'].textContent`), '重连');
   assert.equal(run(`nodes['live-relax'].disabled`), true);
   run(`liveHandleClick({dataset:{a:'liveConnectionAction'}})`);
   assert.equal(run(`nodes['live-password'].focused`), true);
   assert.equal(requests.filter(request => request.route === '/api/connect').length, 1);
+});
+
+test('starting the local session can be retried after a network failure', async () => {
+  let attempts = 0;
+  const {run, interval, requests} = fixture({sessionResponse: () => {
+    if (++attempts === 1) throw new TypeError('Failed to fetch');
+  }});
+  await run('liveStart()');
+  assert.equal(run('live.sessionFailed'), true);
+  assert.equal(run('live.token'), '');
+  await run('Promise.all([liveStart(), liveStart()])');
+  assert.equal(run('live.sessionFailed'), false);
+  assert.ok(run('live.token'));
+  assert.equal(interval(), 100);
+  assert.deepEqual(requests.map(request => request.route), ['/api/session', '/api/session', '/api/status']);
 });
 
 test('default mode submits SSH credentials only to the local connect API and reads real joint feedback', async () => {
