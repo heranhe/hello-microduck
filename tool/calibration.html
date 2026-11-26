@@ -371,8 +371,10 @@ ul.plain li.go::before{content:"…";color:var(--act)}
 
 #live-message{white-space:pre-line;overflow-wrap:anywhere}
 .live-options{margin-top:10px}.live-data{white-space:pre-wrap;overflow:auto;max-height:240px;font:12px/1.6 var(--mono);color:var(--muted)}
-#mode-toggle,#live-relax{white-space:nowrap}.hr{margin-left:auto;gap:10px}
-#mode-toggle{padding:5px 8px;text-decoration:none;border:1px solid var(--line);color:var(--ink)}
+#mode-toggle,#live-relax,#live-connection-action{white-space:nowrap}.hr{margin-left:auto;gap:10px}
+#mode-toggle,#live-connection-action{padding:5px 8px;text-decoration:none;border:1px solid var(--line);color:var(--ink)}
+#live-connection-action:disabled{opacity:.4;cursor:default}
+#link.live-status{color:var(--muted)}#link.live-connected{color:var(--good)}
 #live-relax{color:var(--bad)}#live-relax:disabled{opacity:.4;cursor:default}
 @media(max-width:420px){.brandbox{flex:1 1 100%}.hr{flex-wrap:wrap;justify-content:flex-end}}
 </style>
@@ -382,7 +384,7 @@ ul.plain li.go::before{content:"…";color:var(--act)}
     <div class="brandbox"><div class="brandrow"><b id="mode-brand">MicroDuck 标定 · 演示</b><button class="unoff" data-a="about" title="这是非官方工具，点开看说明">非官方</button></div>
       <div class="ghrow"><span>训练个性化动作</span><a class="ghbtn" href="https://github.com/heranhe/microduck-lab-cloud" target="_blank" rel="noopener" title="打开我的训练实验室：训练、世界模拟、动作编辑和云端 GPU">GitHub ↗</a></div></div>
     <ol id="rail" aria-label="标定进度"></ol>
-    <div class="hr"><span id="link"></span><button class="link" data-a="adv">高级模式</button><button class="link" id="live-relax" data-a="liveRelax" hidden disabled>停止并卸力</button><button class="link" id="mode-toggle" data-a="liveToggle" hidden>体验演示</button></div>
+    <div class="hr"><span id="link" role="status"></span><button type="button" class="link" id="live-connection-action" data-a="liveConnectionAction" hidden>登录</button><button class="link" data-a="adv">高级模式</button><button class="link" id="live-relax" data-a="liveRelax" hidden disabled>停止并卸力</button><button class="link" id="mode-toggle" data-a="liveToggle" hidden>体验演示</button></div>
   </header>
   <main>
     <div id="stageWrap">
@@ -1046,6 +1048,9 @@ function render(){
     $('mode-brand').textContent=live.mode?'MicroDuck 标定 · 实机':'MicroDuck 标定 · 演示';
     $('mode-toggle').hidden=false;
     $('mode-toggle').textContent=live.mode?'体验演示':'返回实机调试';
+    $('live-connection-action').hidden=!live.mode;
+    $('link').classList.toggle('live-status',live.mode);
+    if(!live.mode)$('link').classList.remove('live-connected');
     $('live-relax').hidden=!live.mode&&!liveConnected();
     if(live.mode){liveRender();return}
     $('dock').hidden=false;

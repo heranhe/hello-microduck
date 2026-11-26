@@ -226,8 +226,12 @@ class RobotService:
         finally:
             self.command_lock.release()
 
-    def _disconnect(self):
+    def _disconnect(self, expected_telemetry=None):
         with self.lock:
+            if expected_telemetry is not None and expected_telemetry is not self.telemetry:
+                if self.telemetry is not None:
+                    raise RuntimeError('SSH 连接已切换，请重新读取反馈')
+                return {'connected': False}
             client, self.client = self.client, None
             self.telemetry = None
             self.target = None
@@ -269,7 +273,17 @@ class RobotService:
             if telemetry is None:
                 return {'connected': False}
         started = time.monotonic()
-        bus = telemetry.read()
+        transport = telemetry.client.get_transport()
+        try:
+            if transport is None or not transport.is_active():
+                raise ConnectionError('SSH transport is inactive')
+            bus = telemetry.read()
+        except Exception as error:
+            if (isinstance(error, (TimeoutError, EOFError, ConnectionError))
+                    or transport is None or not transport.is_active()):
+                result = self._disconnect(expected_telemetry=telemetry)
+                return {**result, 'reason': 'SSH 已断开。请确认机器人已通电，然后重连。'}
+            raise
         with self.lock:
             if telemetry is not self.telemetry:
                 raise RuntimeError('SSH 连接已切换，请重新读取反馈')

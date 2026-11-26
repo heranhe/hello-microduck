@@ -7,7 +7,7 @@ const live = {
   busy: false, relaxing: false, pendingRead: null, pendingKey: null,
   calibration: null, pendingCalibration: null, calibrationDue: 0,
   readDue: 0, panelDue: 0, feedbackVisible: false, feedbackError: '',
-  error: '', notice: '', visited: new Set(),
+  error: '', notice: '', hasConnected: false, visited: new Set(),
 };
 
 async function liveApi(path, body) {
@@ -15,6 +15,7 @@ async function liveApi(path, body) {
     method: 'POST', headers: {'Content-Type': 'application/json', 'X-Session-Token': live.token},
     body: JSON.stringify(body),
   };
+  if (path === 'status') options.signal = AbortSignal.timeout(5000);
   const response = await fetch(`/api/${path}`, options);
   const data = await response.json();
   if (!response.ok) {
@@ -111,7 +112,12 @@ function liveModelPose(now) {
 
 function liveAccept(report, requestedAt = performance.now()) {
   if (report?.connected !== true) {
+    if (liveConnected() && report?.reason) {
+      live.error = '';
+      live.notice = report.reason;
+    }
     live.report = null;
+    live.receivedAt = -Infinity;
     live.calibration = null;
     live.feedbackError = '';
     live.step = 'connect';
@@ -119,6 +125,7 @@ function liveAccept(report, requestedAt = performance.now()) {
     live.visited.clear();
     return;
   }
+  live.hasConnected = true;
   live.report = report;
   live.target = report.target || live.target;
   // Conservatively include the request's transit time in the sample age.
@@ -128,22 +135,28 @@ function liveAccept(report, requestedAt = performance.now()) {
 function liveRefresh() {
   if (live.pendingRead) return live.pendingRead;
   const wasConnected = liveConnected();
+  const hadFeedbackError = Boolean(live.feedbackError);
   const requestedAt = performance.now();
   live.pendingRead = (async () => {
     try {
       liveAccept(await liveApi('status', {}), requestedAt);
       live.feedbackError = '';
       live.readDue = 0;
-      if (wasConnected !== liveConnected() && live.mode) render();
     } catch (error) {
       live.receivedAt = -Infinity;
-      live.feedbackError = error.message;
+      live.feedbackError = error.name === 'TimeoutError' ? '状态读取超时，正在重试…' : error.message;
       live.readDue = performance.now() + 1000;
     }
   })().finally(() => {
     live.pendingRead = null;
+    if (!live.mode) return;
+    const feedbackChanged = hadFeedbackError !== Boolean(live.feedbackError);
+    if (wasConnected !== liveConnected() || (feedbackChanged && live.step === 'connect')) {
+      render();
+      return;
+    }
     const now = performance.now();
-    if (live.mode && (now >= live.panelDue || liveFresh(now) !== live.feedbackVisible)) liveUpdate();
+    if (feedbackChanged || now >= live.panelDue || liveFresh(now) !== live.feedbackVisible) liveUpdate();
   });
   return live.pendingRead;
 }
@@ -270,7 +283,10 @@ function liveSelect(key) {
 }
 
 function liveConnectionPanel() {
-  if (liveConnected()) return html`<h1>已连接机器人</h1><p class="say">${live.target}</p><div class="spring"></div><button class="btn main" data-a="liveStep" data-k="check">检查舵机</button><button class="link" data-a="liveDisconnect" data-idle>断开 SSH</button>`;
+  if (liveConnected()) {
+    const waiting = Boolean(live.feedbackError);
+    return html`<h1>${waiting ? '等待机器人响应' : '已连接机器人'}</h1><p class="say">${live.target}</p><div class="spring"></div><button class="btn main" data-a="liveStep" data-k="check" ${waiting ? 'disabled' : ''}>检查舵机</button>`;
+  }
   return html`<h1>连接 MicroDuck</h1><p class="say">确认机器人主板已通电并完成启动，电脑和机器人在同一局域网，再填写机器人 SSH 账户。</p>
     <form id="live-connection" class="stack">
       <div class="field"><label for="live-target">SSH 地址</label><input name="target" id="live-target" value="${live.target}" autocomplete="username" autocapitalize="off" spellcheck="false" required></div>
@@ -360,7 +376,15 @@ function liveUpdate() {
   messageEl.className = `note ${error ? 'bad' : ''}`;
   if (messageEl.textContent !== (error || live.notice)) messageEl.textContent = error || live.notice;
   liveUpdateStage(fresh);
-  $('link').textContent = liveConnected() ? `${live.target} · ${bus.mode || '模式未知'}` : '';
+  const connected = liveConnected(), verified = connected && !live.feedbackError;
+  const link = $('link');
+  const label = verified ? `已连接 · ${live.target} · ${bus?.mode || '模式未知'}`
+    : connected ? '等待机器人响应' : live.hasConnected ? 'SSH 已断开' : '尚未连接机器人';
+  if (link.textContent !== label) link.textContent = label;
+  link.classList.toggle('live-connected', verified);
+  const connectionAction = $('live-connection-action');
+  connectionAction.textContent = connected ? '断开' : live.hasConnected ? '重连' : '登录';
+  connectionAction.disabled = live.busy || live.relaxing || (connected && !live.token);
   $('live-relax').disabled = !liveConnected() || live.relaxing;
   $('mode-toggle').disabled = live.busy || live.relaxing;
   const form = $('live-connection');
@@ -380,7 +404,8 @@ function liveUpdate() {
   const count = $('live-count');
   if (count) {
     const online = J.filter(liveServo).length;
-    count.textContent = online ? `${online} / ${J.length} 颗有实时反馈 · 扭矩 ${liveTorqueLabel()}`
+    count.textContent = !verified ? '等待机器人响应，实时读数暂不可用。'
+      : online ? `${online} / ${J.length} 颗有实时反馈 · 扭矩 ${liveTorqueLabel()}`
       : '主板已连接，暂无有效舵机反馈。请检查舵机供电、总线接线和固件运行状态。';
   }
   const detail = $('live-detail');
@@ -448,7 +473,14 @@ function liveHandleClick(button) {
       liveConfirm('停止并卸力', '先托住机身，卸力后机身可能倒下。', '确认卸力',
         () => liveOperate({action: 'relax'}, 'robotd 已确认卸力。'));
       break;
-    case 'liveDisconnect': liveDisconnect(); break;
+    case 'liveConnectionAction':
+      if (liveConnected()) {
+        liveDisconnect();
+      } else {
+        if (live.step !== 'connect') liveStep('connect');
+        ($('live-target')?.value ? $('live-password') : $('live-target'))?.focus();
+      }
+      break;
     case 'liveRefresh': liveRefresh(); break;
     case 'liveTrust': {
       const form = $('live-connection'), key = live.pendingKey;

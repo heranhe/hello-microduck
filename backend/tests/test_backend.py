@@ -133,6 +133,25 @@ class RelayTests(unittest.TestCase):
         self.assertEqual(client.exec_command.call_count, 2)
         self.assertEqual(writer.flush.call_count, 3)
 
+    def test_status_reports_disconnect_after_ssh_loss_and_discards_the_session(self):
+        for active in (False, True):
+            with self.subTest(active=active):
+                client, telemetry = Mock(), Mock()
+                client.get_transport.return_value.is_active.return_value = active
+                telemetry.client = client
+                telemetry.read.side_effect = TimeoutError('robot stopped responding')
+                service = RobotService()
+                service.client, service.telemetry = client, telemetry
+                service.target = 'radxa@fixture.local'
+
+                status = service.status()
+                self.assertFalse(status['connected'])
+                self.assertIn('SSH 已断开', status['reason'])
+                self.assertEqual(telemetry.read.call_count, int(active))
+                self.assertEqual(service.status(), {'connected': False})
+                self.assertIsNone(service.target)
+                client.close.assert_called_once()
+
     @unittest.skipUnless(hasattr(socket, 'AF_UNIX'), 'Unix robot socket relay')
     def test_remote_agent_round_trip_with_unix_robotd_fixture(self):
         with tempfile.TemporaryDirectory() as tmp:

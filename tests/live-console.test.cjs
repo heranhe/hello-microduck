@@ -5,7 +5,7 @@ const test = require('node:test');
 const vm = require('node:vm');
 
 const source = fs.readFileSync(path.join(__dirname, '../backend/static/live.js'), 'utf8');
-function fixture({calibrationResponse} = {}) {
+function fixture({calibrationResponse, statusResponse} = {}) {
   const requests = [];
   let connected = false;
   let saved = [];
@@ -18,7 +18,7 @@ function fixture({calibrationResponse} = {}) {
       last_sample:{at_us:950, servos:[{id:20, joint:joint.key, position_raw:2050}]}},
   } : {connected};
   const context = vm.createContext({
-    K: Math.PI * 2 / 4096, J: [joint], reduced:false, render(){}, $(){return null},
+    K: Math.PI * 2 / 4096, J: [joint], reduced:false, render(){}, $(){return null}, AbortSignal,
     performance:{now:() => now}, setInterval(callback, ms){tick = callback; interval = ms},
     isBusy(){return false}, tuneDirty(){return false}, S:{pad:{sub:'ready'}},
     fetch: async (route, options) => {
@@ -35,15 +35,64 @@ function fixture({calibrationResponse} = {}) {
         return {ok:true, json:async () => ({result:{calibration:{joints:saved}}})};
       }
       if (route === '/api/session') return {ok:true, json:async () => ({mode:'real', token:'test-session-ticket'})};
+      if (route === '/api/status') {
+        const response = statusResponse?.();
+        if (response) return response;
+      }
       return {ok:true, json:async () => ({result:report()})};
     },
     FormData: class {get(key) {return ({target:'radxa@fixture.local',port:'22',socket:'/run/robotd.sock',password:'local-fixture-example'})[key]}},
   });
   vm.runInContext(source, context);
   const run = input => vm.runInContext(input, context);
+  run('globalThis.updatePanel = liveUpdate');
   run('liveUpdate = () => { live.feedbackVisible = liveFresh(); }');
   return {run, requests, advance(ms){now += ms}, tick(){tick()}, interval:() => interval};
 }
+
+test('connection status and the header action follow login, feedback loss and confirmed disconnect', async () => {
+  let response;
+  const {run, requests, advance, tick} = fixture({statusResponse: () => response});
+  run(`
+    globalThis.nodes = Object.fromEntries(['live-message', 'link', 'live-relax', 'mode-toggle',
+      'live-connection-action', 'live-password'].map(id => [id, {classList:{toggle(){}}}]));
+    nodes['live-target'] = {value:live.target};
+    nodes['live-password'].focus = () => { nodes['live-password'].focused = true; };
+    $ = id => nodes[id];
+    globalThis.document = {querySelectorAll: () => []};
+    globalThis.R = null;
+    globalThis.aboutNote = '';
+    globalThis.html = String.raw;
+    liveUpdate = updatePanel;
+    render = () => { globalThis.panelMarkup = liveConnectionPanel(); liveUpdate(); };
+    render();
+  `);
+  assert.equal(run(`nodes['live-connection-action'].textContent`), '登录');
+  await run('liveStart()');
+  await run('liveConnect({elements:{password:{value:"local-fixture-example"}}})');
+  await run('Promise.all([live.pendingRead, live.pendingCalibration])');
+  run(`liveStep('connect')`);
+  assert.match(run('panelMarkup'), /已连接机器人/);
+  assert.equal(run(`nodes['live-connection-action'].textContent`), '断开');
+
+  response = {ok:false, json:async () => ({error:'反馈通道暂不可用'})};
+  await run('liveRefresh()');
+  assert.doesNotMatch(run('panelMarkup'), /已连接机器人/);
+  assert.equal(run(`nodes.link.textContent`), '等待机器人响应');
+
+  response = {ok:true, json:async () => ({result:{connected:false, reason:'SSH 已断开。'}})};
+  advance(1000);
+  tick();
+  await run('live.pendingRead');
+  assert.equal(run('liveConnected()'), false);
+  assert.match(run('panelMarkup'), /连接 MicroDuck/);
+  assert.equal(run(`nodes.link.textContent`), 'SSH 已断开');
+  assert.equal(run(`nodes['live-connection-action'].textContent`), '重连');
+  assert.equal(run(`nodes['live-relax'].disabled`), true);
+  run(`liveHandleClick({dataset:{a:'liveConnectionAction'}})`);
+  assert.equal(run(`nodes['live-password'].focused`), true);
+  assert.equal(requests.filter(request => request.route === '/api/connect').length, 1);
+});
 
 test('default mode submits SSH credentials only to the local connect API and reads real joint feedback', async () => {
   const {run, requests} = fixture();
